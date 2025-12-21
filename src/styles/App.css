@@ -1,0 +1,135 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background: #f9fafb;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 24px;
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.menu-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 300;
+  font-family: Alter;
+}
+
+.search-bar {
+  flex: 1;
+  max-width: 400px;
+  display: flex;
+  gap: 8px;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.search-bar button {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.nav {
+  display: flex;
+  gap: 32px;
+  margin-left: auto;
+}
+
+.nav a {
+  text-decoration: none;
+  color: #374151;
+  font-size: 14px;
+  transition: color 0.3s;
+}
+
+.nav a:hover {
+  color: #8b5cf6;
+}
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+.dropdown-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  padding: 0;
+  font-family: alter;
+  transition: color 0.3s;
+}
+.dropdown:hover {
+  color: #8b5cf6;
+}
+.main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 1200px) {
+  .recipe-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .nav {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .recipe-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .recipe-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-bar {
+    max-width: 200px;
+  }
+}
