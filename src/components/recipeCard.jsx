@@ -1,4 +1,4 @@
-import "../styles/recipeCard.css";
+import "../styles/RecipeCard.css";
 
 function RecipeCard({ recipe }) {
 
@@ -23,24 +23,17 @@ function RecipeCard({ recipe }) {
                 </p>
             </div>
 
-            <div className ="recipe-footer">
-                <div className="recipe-rating">
+            <div className="recipe-footer">
 
-                    <span className = "stars-filled">
-                        {filledStars}
-                    </span>
-
-                    <span className = "stars-empty">
-                        {emptyStars}
-                    </span>
-                </div>
-                
-                <span className="recipe-difficulty">{recipe.diffulty}</span>
+              <div className="recipe-rating" aria-label={`Rating: ${recipe.rating} out of 5 stars`}>
+                <span className="stars-filled">{filledStars}</span>
+                <span className="stars-empty">{emptyStars}</span>
+              </div>
+              <span className="recipe-difficulty">{recipe.difficulty}</span>
             </div>
 
         </div>
-
-    );
+    )
 }
 
 export default RecipeCard;

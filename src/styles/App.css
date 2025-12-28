@@ -15,7 +15,7 @@ body {
 
 .header {
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #eeeeee;
   padding: 16px 24px;
 }
 
@@ -67,6 +67,7 @@ body {
   display: flex;
   gap: 32px;
   margin-left: auto;
+  
 }
 
 .nav a {
@@ -77,7 +78,7 @@ body {
 }
 
 .nav a:hover {
-  color: #8b5cf6;
+  color: #ffffff;
 }
 .dropdown {
   position: relative;
@@ -86,7 +87,7 @@ body {
 .dropdown-btn {
   background: none;
   border: none;
-  font-size: 14px;
+  font-size: 1rem;
   color: #374151;
   cursor: pointer;
   padding: 0;
@@ -94,8 +95,41 @@ body {
   transition: color 0.3s;
 }
 .dropdown:hover {
-  color: #8b5cf6;
+  color: #858585;
 }
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #ffffff;
+  min-width: 180px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.3);
+  z-index: 100;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  overflow: hidden;
+  border: 1px solid #000000;
+  border-radius: 4px;
+}
+
+.dropdown-content a {
+
+  color: #858585;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  transition: background 0.2s;
+}
+
+.dropdown-content a:hover {
+  background-color: #a1a1a1;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
 .main {
   max-width: 1400px;
   margin: 0 auto;
