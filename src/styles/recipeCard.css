@@ -4,11 +4,12 @@ body {
 }
 .recipe-card{
     background: white;
-    border-radius: 15px;
+    border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    transition: box-shadow 0.3s ease;
+    overflow: hidden;  /* ← Makes image fill rounded corners */
+    transition: all 0.3s ease;
     cursor: pointer;
+    display: flex;
     flex-direction: column;
     height: 100%;
 }
@@ -20,12 +21,9 @@ body {
 }
 
 .recipe-image {
-    padding: 15px;
-    height: 300px;
-    width: 320px;
-    border-radius: 15px 15px 15px 15px;
-    border: thin solid black;
-    aspect-ratio: 16/9;
+    height: 200px;
+    width: 100%;
+
 }
 
 .recipe-image img {
@@ -36,7 +34,7 @@ body {
 }
 
 .recipe-content{
-    padding: 15px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
