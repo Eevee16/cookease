@@ -18,12 +18,12 @@ function RecipeCard({ recipe }) {
                     {recipe.title}
                 </h3>
 
-                <p className="recipes-ingredients">
+                <p className="recipe-ingredients">
                     {recipe.ingredients.join(', ')}
                 </p>
             </div>
 
-            <div className="recipe-footer">
+            <div className="recipe-card-footer">
 
               <div className="recipe-rating" aria-label={`Rating: ${recipe.rating} out of 5 stars`}>
                 <span className="stars-filled">{filledStars}</span>
