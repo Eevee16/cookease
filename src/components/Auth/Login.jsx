@@ -2,13 +2,11 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../../styles/Auth.css';
 
-function Signup() {
+function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    displayName: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,27 +21,15 @@ function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
     setLoading(true);
 
-    // TODO: Add Firebase signup here later
-    console.log('Signup data:', formData);
+    // TODO: Add Firebase login here later
+    console.log('Login data:', formData);
     
-    // Simulate signup
+    // Simulate login
     setTimeout(() => {
       setLoading(false);
-      alert('Signup successful! (Demo mode)');
+      alert('Login successful! (Demo mode)');
       navigate('/');
     }, 1000);
   };
@@ -55,24 +41,11 @@ function Signup() {
           <h1 className="auth-logo" onClick={() => navigate('/')}>
             CookEase
           </h1>
-          <p className="auth-subtitle">Create your account</p>
+          <p className="auth-subtitle">Welcome back!</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           {error && <div className="auth-error">{error}</div>}
-
-          <div className="form-group">
-            <label htmlFor="displayName">Full Name</label>
-            <input
-              type="text"
-              id="displayName"
-              name="displayName"
-              value={formData.displayName}
-              onChange={handleChange}
-              placeholder="Juan Dela Cruz"
-              required
-            />
-          </div>
 
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -95,20 +68,7 @@ function Signup() {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="At least 6 characters"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re-enter your password"
+              placeholder="Enter your password"
               required
             />
           </div>
@@ -118,14 +78,14 @@ function Signup() {
             className="auth-btn"
             disabled={loading}
           >
-            {loading ? 'Creating Account...' : 'Sign Up'}
+            {loading ? 'Logging in...' : 'Log In'}
           </button>
         </form>
 
         <div className="auth-footer">
           <p>
-            Already have an account? 
-            <Link to="/login"> Log in</Link>
+            Don't have an account? 
+            <Link to="/signup"> Sign up</Link>
           </p>
         </div>
       </div>
@@ -133,4 +93,4 @@ function Signup() {
   );
 }
 
-export default Signup;
+export default Login;
