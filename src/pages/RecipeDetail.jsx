@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { recipes } from '../components/data/recipes.js';
-import '../styles/RecipeDetail.css'; // We'll provide CSS below too
+import '../styles/RecipeCard.css';
 
 function RecipeDetail() {
   const { id } = useParams(); // Gets the :id from the URL
