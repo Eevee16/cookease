@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../../styles/Auth.css';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../firebase/config';
+
 
 function Login() {
   const navigate = useNavigate();
@@ -19,20 +22,36 @@ function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    // TODO: Add Firebase login here later
-    console.log('Login data:', formData);
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      formData.email,
+      formData.password
+    );
+
+    alert('Login successful!');
+    navigate('/');
+
+  } catch (error) {
+    console.error('Login error:', error);
     
-    // Simulate login
-    setTimeout(() => {
-      setLoading(false);
-      alert('Login successful! (Demo mode)');
-      navigate('/');
-    }, 1000);
-  };
+    if (error.code === 'auth/user-not-found') {
+      setError('No account found with this email');
+    } else if (error.code === 'auth/wrong-password') {
+      setError('Incorrect password');
+    } else if (error.code === 'auth/invalid-email') {
+      setError('Invalid email address');
+    } else {
+      setError('Login failed. Please try again.');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="auth-page">

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../../styles/Auth.css';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth, db } from '../../firebase/config';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 function Signup() {
   const navigate = useNavigate();
@@ -37,15 +40,47 @@ function Signup() {
 
     setLoading(true);
 
-    // TODO: Add Firebase signup here later
-    console.log('Signup data:', formData);
+    try {
+      // Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      formData.email,
+      formData.password
+    );
+
+    // Update display name
+    await updateProfile(userCredential.user, {
+      displayName: formData.displayName
+    });
+
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', userCredential.user.uid), {
+      email: formData.email,
+      displayName: formData.displayName,
+      photoURL: null,
+      createdAt: serverTimestamp(),
+      recipesCount: 0
+    });
+
+    alert('Account created successfully!');
+    navigate('/');
+
+  } catch (error) {
+    console.error('Signup error:', error);
     
-    // Simulate signup
-    setTimeout(() => {
-      setLoading(false);
-      alert('Signup successful! (Demo mode)');
-      navigate('/');
-    }, 1000);
+    // User-friendly error messages
+    if (error.code === 'auth/email-already-in-use') {
+      setError('This email is already registered');
+    } else if (error.code === 'auth/invalid-email') {
+      setError('Invalid email address');
+    } else if (error.code === 'auth/weak-password') {
+      setError('Password is too weak');
+    } else {
+      setError(error.message);
+    }
+  } finally {
+    setLoading(false);
+  }
   };
 
   return (
