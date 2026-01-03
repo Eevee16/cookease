@@ -32,7 +32,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyA4KDnymUbhNdRq0XraGnTsl7aCZffxs-8",
   authDomain: "cookease-835ba.firebaseapp.com",
   projectId: "cookease-835ba",
-  storageBucket: "cookease-835ba.firebasestorage.app",
+  storageBucket: "cookease-835ba.appspot.com",
   messagingSenderId: "845407525260",
   appId: "1:845407525260:web:c4eab7cdb67691026d5ea9",
   measurementId: "G-FWJ2MML3S4"

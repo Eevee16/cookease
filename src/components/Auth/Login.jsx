@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import '../../styles/Auth.css';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 
 
-function Login() {
+function Login () {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -34,7 +35,8 @@ function Login() {
     );
 
     alert('Login successful!');
-    navigate('/');
+    const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
 
   } catch (error) {
     console.error('Login error:', error);

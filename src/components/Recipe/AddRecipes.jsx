@@ -1,18 +1,33 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../firebase/config';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import '../../styles/AddRecipes.css';
 
 function AddRecipe() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user === null) {
+      // not logged in → redirect to login (remember where we came from)
+      navigate('/login', { state: { from: location } });
+    }
+  }, [user, navigate, location]);
+
   const [formData, setFormData] = useState({
     title: '',
     category: 'lunch',
     cuisine: 'filipino',
     difficulty: 'Easy',
-    image: '',
     ingredients: [''],
     instructions: ['']
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [lastSavedId, setLastSavedId] = useState(null);
 
   const handleChange = (e) => {
     setFormData({
@@ -20,6 +35,8 @@ function AddRecipe() {
       [e.target.name]: e.target.value
     });
   };
+
+
 
   const handleIngredientChange = (index, value) => {
     const newIngredients = [...formData.ingredients];
@@ -57,21 +74,61 @@ function AddRecipe() {
     setFormData({ ...formData, instructions: newInstructions });
   };
 
-  const handleSubmit = (e) =>{
+  const handleSubmit = async (e) =>{
     e.preventDefault();
-  }
+    console.log('handleSubmit triggered');
+    setError('');
+    setSubmitting(true);
 
-  //Filter out empty ingredients and instructions
-  const cleanedData = {
+
+
+    //Filter out empty ingredients and instructions
+    const cleanedData = {
       ...formData,
       ingredients: formData.ingredients.filter(ing => ing.trim() !== ''),
       instructions: formData.instructions.filter(inst => inst.trim() !== '')
     };
 
-    //TODO: Add Firebase submission logic here later
-    console.log('Recipe data:', cleanedData);
-    alert('Recipe added! (Demo mode)');
-    navigate('/');
+    try {
+      // Image upload removed — no images will be stored
+      const imagesUrls = [];
+
+      // Build recipe object
+      const recipeObj = {
+        title: cleanedData.title,
+        category: cleanedData.category,
+        cuisine: cleanedData.cuisine,
+        difficulty: cleanedData.difficulty,
+        image: '',
+        images: [],
+        ingredients: cleanedData.ingredients,
+        instructions: cleanedData.instructions,
+        ownerId: user?.uid || null,
+        ownerName: user?.displayName || '',
+        createdAt: serverTimestamp(),
+        rating: 0
+      };
+
+      console.log('Saving recipe to Firestore:', recipeObj);
+
+      // Save to Firestore
+      const recipesCol = collection(db, 'recipes');
+      const docRef = await addDoc(recipesCol, recipeObj);
+
+      console.log('Recipe saved, id:', docRef.id);
+      setLastSavedId(docRef.id);
+
+      alert('Recipe added!');
+      navigate('/');
+
+    } catch (err) {
+      console.error('Error adding recipe:', err);
+      setError(err?.message || String(err));
+      alert('Failed to add recipe. Check console for details.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
     return (
     <div className="add-recipe-page">
@@ -87,7 +144,9 @@ function AddRecipe() {
           <h2 className="page-title">Share Your Recipe</h2>
           <p className="page-subtitle">Fill in the details below to add your recipe</p>
 
-          <form className="recipe-form" onSubmit={handleSubmit}>
+          <form className="recipe-form" onSubmit={handleSubmit} noValidate>
+            {error && <div className="form-error">{error}</div>}
+            {lastSavedId && <div className="form-success">Last saved id: {lastSavedId}</div> }
             {/* Basic Info Section */}
             <div className="form-section">
               <h3>Basic Information</h3>
@@ -155,18 +214,7 @@ function AddRecipe() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="image">Image URL</label>
-                <input
-                  type="url"
-                  id="image"
-                  name="image"
-                  value={formData.image}
-                  onChange={handleChange}
-                  placeholder="https://example.com/image.jpg"
-                />
-                <small>Paste a link to your recipe image</small>
-              </div>
+
             </div>
 
             {/* Ingredients Section */}
@@ -240,11 +288,17 @@ function AddRecipe() {
                 type="button"
                 className="cancel-btn"
                 onClick={() => navigate('/')}
+                disabled={submitting}
               >
                 Cancel
               </button>
-              <button type="submit" className="submit-btn">
-                Publish Recipe
+              <button
+                type="submit"
+                className="submit-btn"
+                onClick={() => console.log('Publish clicked')}
+                disabled={submitting}
+              >
+                {submitting ? 'Publishing...' : 'Publish Recipe'}
               </button>
             </div>
           </form>

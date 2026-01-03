@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import '../../styles/Auth.css';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../../firebase/config';
@@ -7,6 +7,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 function Signup() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     displayName: '',
     email: '',
@@ -63,7 +64,8 @@ function Signup() {
     });
 
     alert('Account created successfully!');
-    navigate('/');
+    const from = location.state?.from?.pathname || '/';
+    navigate(from, { replace: true });
 
   } catch (error) {
     console.error('Signup error:', error);
