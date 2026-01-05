@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../firebase/config';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, storage } from '../../firebase/config';
+import { collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import '../../styles/AddRecipes.css';
 
 function AddRecipe() {
@@ -12,7 +13,6 @@ function AddRecipe() {
 
   useEffect(() => {
     if (user === null) {
-      // not logged in → redirect to login (remember where we came from)
       navigate('/login', { state: { from: location } });
     }
   }, [user, navigate, location]);
@@ -22,12 +22,19 @@ function AddRecipe() {
     category: 'lunch',
     cuisine: 'filipino',
     difficulty: 'Easy',
+    prepTime: '',
+    cookTime: '',
+    servings: '',
+    description: '',
     ingredients: [''],
     instructions: ['']
   });
+  
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadPercent, setUploadPercent] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [lastSavedId, setLastSavedId] = useState(null);
 
   const handleChange = (e) => {
     setFormData({
@@ -36,7 +43,21 @@ function AddRecipe() {
     });
   };
 
-
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setImageFile(file);
+    
+    // Create preview
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
+  };
 
   const handleIngredientChange = (index, value) => {
     const newIngredients = [...formData.ingredients];
@@ -74,15 +95,13 @@ function AddRecipe() {
     setFormData({ ...formData, instructions: newInstructions });
   };
 
-  const handleSubmit = async (e) =>{
+  const handleSubmit = async (e) => {
     e.preventDefault();
     console.log('handleSubmit triggered');
     setError('');
     setSubmitting(true);
 
-
-
-    //Filter out empty ingredients and instructions
+    // Filter out empty ingredients and instructions
     const cleanedData = {
       ...formData,
       ingredients: formData.ingredients.filter(ing => ing.trim() !== ''),
@@ -90,36 +109,79 @@ function AddRecipe() {
     };
 
     try {
-      // Image upload removed — no images will be stored
-      const imagesUrls = [];
-
-      // Build recipe object
-      const recipeObj = {
+      // Build partial recipe object and create document first so we can return early
+      const recipePartial = {
         title: cleanedData.title,
         category: cleanedData.category,
         cuisine: cleanedData.cuisine,
         difficulty: cleanedData.difficulty,
-        image: '',
-        images: [],
+        prepTime: cleanedData.prepTime,
+        cookTime: cleanedData.cookTime,
+        servings: cleanedData.servings ? Number(cleanedData.servings) : 4,
+        description: cleanedData.description,
+        image: '', // empty until upload finishes
         ingredients: cleanedData.ingredients,
         instructions: cleanedData.instructions,
         ownerId: user?.uid || null,
-        ownerName: user?.displayName || '',
+        ownerName: user?.displayName || user?.email || 'Anonymous',
         createdAt: serverTimestamp(),
-        rating: 0
+        rating: 0,
+        status: imageFile ? 'uploading' : 'done'
       };
 
-      console.log('Saving recipe to Firestore:', recipeObj);
+      console.log('Creating recipe doc (non-blocking):', recipePartial);
 
-      // Save to Firestore
       const recipesCol = collection(db, 'recipes');
-      const docRef = await addDoc(recipesCol, recipeObj);
+      const docRef = await addDoc(recipesCol, recipePartial);
 
-      console.log('Recipe saved, id:', docRef.id);
-      setLastSavedId(docRef.id);
+      console.log('Recipe created with ID:', docRef.id);
 
-      alert('Recipe added!');
+      // Navigate back immediately so user isn't waiting for image upload
+      alert('Recipe added! Image upload will continue in the background.');
       navigate('/');
+
+      // If there's an image, upload it in background and update the doc when done
+      if (imageFile) {
+        try {
+          console.log('Background upload started for:', docRef.id);
+          const timestamp = Date.now();
+          const fileRef = storageRef(
+            storage,
+            `recipes/${user.uid}/${docRef.id}_${timestamp}_${imageFile.name}`
+          );
+          const uploadTask = uploadBytesResumable(fileRef, imageFile);
+
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+              setUploadPercent(percent);
+              console.log(`Background upload is ${percent}% done`);
+            },
+            async (error) => {
+              console.error('Background upload error:', error);
+              // mark doc as failed
+              try { await updateDoc(docRef, { status: 'failed' }); } catch (e) { console.error('Failed to update doc status:', e); }
+            },
+            async () => {
+              try {
+                const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                console.log('Background file available at:', downloadUrl);
+                // Update the Firestore doc with the image URL and mark as done
+                await updateDoc(docRef, { image: downloadUrl, status: 'done' });
+              } catch (error) {
+                console.error('Error getting download URL in background:', error);
+                try { await updateDoc(docRef, { status: 'failed' }); } catch (e) { console.error('Failed to update doc status:', e); }
+              } finally {
+                setUploadPercent(0);
+              }
+            }
+          );
+        } catch (bgErr) {
+          console.error('Background upload setup failed:', bgErr);
+          try { await updateDoc(docRef, { status: 'failed' }); } catch (e) { console.error('Failed to update doc status:', e); }
+        }
+      }
 
     } catch (err) {
       console.error('Error adding recipe:', err);
@@ -128,9 +190,9 @@ function AddRecipe() {
     } finally {
       setSubmitting(false);
     }
-  }
+  };
 
-    return (
+  return (
     <div className="add-recipe-page">
       <header className="add-recipe-header">
         <button className="back-btn" onClick={() => navigate('/')}>
@@ -146,7 +208,7 @@ function AddRecipe() {
 
           <form className="recipe-form" onSubmit={handleSubmit} noValidate>
             {error && <div className="form-error">{error}</div>}
-            {lastSavedId && <div className="form-success">Last saved id: {lastSavedId}</div> }
+
             {/* Basic Info Section */}
             <div className="form-section">
               <h3>Basic Information</h3>
@@ -214,7 +276,78 @@ function AddRecipe() {
                 </div>
               </div>
 
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="prepTime">Prep Time</label>
+                  <input
+                    type="text"
+                    id="prepTime"
+                    name="prepTime"
+                    value={formData.prepTime}
+                    onChange={handleChange}
+                    placeholder="e.g., 15 minutes"
+                  />
+                </div>
 
+                <div className="form-group">
+                  <label htmlFor="cookTime">Cook Time</label>
+                  <input
+                    type="text"
+                    id="cookTime"
+                    name="cookTime"
+                    value={formData.cookTime}
+                    onChange={handleChange}
+                    placeholder="e.g., 30 minutes"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="servings">Servings</label>
+                  <input
+                    type="number"
+                    id="servings"
+                    name="servings"
+                    value={formData.servings}
+                    onChange={handleChange}
+                    placeholder="4"
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="description">Description</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Tell us about this recipe..."
+                  rows="3"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="imageFile">Recipe Image</label>
+                <input
+                  type="file"
+                  id="imageFile"
+                  name="imageFile"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+                {imagePreview && (
+                  <div className="image-preview">
+                    <img src={imagePreview} alt="Preview" style={{ maxWidth: '200px', marginTop: '10px', borderRadius: '8px' }} />
+                  </div>
+                )}
+                {uploadPercent > 0 && uploadPercent < 100 && (
+                  <div className="upload-progress">
+                    <div className="progress-bar" style={{ width: `${uploadPercent}%` }}></div>
+                    <span>Uploading: {uploadPercent}%</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Ingredients Section */}
@@ -254,7 +387,10 @@ function AddRecipe() {
               <h3>Instructions</h3>
               {formData.instructions.map((instruction, index) => (
                 <div key={index} className="dynamic-field">
-                  <span className="step-number">Step {index + 1}</span>
+                  <span className="step-number" aria-label={`Step ${index + 1}`}>
+                    <span className="step-label">Step</span>
+                    <span className="step-count">{index + 1}</span>
+                  </span>
                   <textarea
                     value={instruction}
                     onChange={(e) => handleInstructionChange(index, e.target.value)}
@@ -295,7 +431,6 @@ function AddRecipe() {
               <button
                 type="submit"
                 className="submit-btn"
-                onClick={() => console.log('Publish clicked')}
                 disabled={submitting}
               >
                 {submitting ? 'Publishing...' : 'Publish Recipe'}

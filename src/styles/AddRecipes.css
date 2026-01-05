@@ -104,8 +104,8 @@
 
 .dynamic-field {
     display: flex;
-    gap: 8px;
-    align-items: flex-start;
+    gap: 12px;
+    align-items: center; /* center-align the badge with the textarea */
     position: relative;
 }
 
@@ -118,11 +118,42 @@
     font-size: 14px;
 }
 
+/* stacked step badge */
 .step-number {
-    font-weight: 600;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    min-width: 52px;
+    height: 52px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    padding: 6px 8px;
+    color: #374151;
+}
+
+.step-label {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.step-count {
+    font-weight: 700;
+    font-size: 16px;
     color: #8b5cf6;
-    padding: 12px 0;
-    white-space: nowrap;
+    line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .step-number {
+    width: 44px;
+    height: 44px;
+    font-size: 12px;
+  }
 }
 
 .remove-btn {

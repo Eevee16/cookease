@@ -294,7 +294,8 @@ body {
 .recipe-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  gap: 28px;
+  grid-auto-rows: 1fr; /* ensure cards in a row are equal height */
 }
 
 .add-recipe-link {
