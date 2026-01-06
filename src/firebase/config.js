@@ -17,8 +17,40 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+const ingredients = [
+  "chicken",
+  "chicken breast",
+  "beef",
+  "ground beef",
+  "pork",
+  "bacon",
+  "salmon",
+  "onion",
+  "garlic",
+  "tomato",
+  "potato",
+  "carrot",
+  "broccoli",
+  "bell pepper",
+  "green onion",
+  "spinach",
+  "mushroom",
+  "rice",
+  "pasta",
+  "bread",
+  "flour",
+  "milk",
+  "butter",
+  "cheese",
+  "yogurt",
+  "salt",
+  "black pepper",
+  "olive oil"
+];
 
 export default app;

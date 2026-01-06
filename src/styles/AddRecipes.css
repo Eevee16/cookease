@@ -240,6 +240,8 @@
     background: #7c3aed;
 }
 
+
+
 @media (max-width: 768px) {
   .add-recipe-container {
     padding: 24px;

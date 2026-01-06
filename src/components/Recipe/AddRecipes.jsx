@@ -5,11 +5,13 @@ import { db, storage } from '../../firebase/config';
 import { collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import '../../styles/AddRecipes.css';
+import imageCompression from 'browser-image-compression';
 
 function AddRecipe() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  
 
   useEffect(() => {
     if (user === null) {
@@ -43,21 +45,95 @@ function AddRecipe() {
     });
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0] || null;
-    setImageFile(file);
-    
-    // Create preview
-    if (file) {
+const compressImage = async (file, options = { maxSizeMB: 0.5, maxWidthOrHeight: 1280, useWebWorker: true, initialQuality: 0.75, fileType: 'image/webp' }) => {
+  try {
+    // Use browser-image-compression to compress and convert to webp by default
+    const compressedBlob = await imageCompression(file, options);
+    const newName = file.name.replace(/\.[^/.]+$/, '.webp');
+    const compressedFile = new File([compressedBlob], newName, {
+      type: 'image/webp',
+      lastModified: Date.now()
+    });
+
+    console.log('Image compressed:', {
+      originalKB: Math.round(file.size / 1024),
+      compressedKB: Math.round(compressedFile.size / 1024)
+    });
+
+    return compressedFile;
+  } catch (err) {
+    console.warn('Compression via browser-image-compression failed, falling back to canvas resize:', err);
+    // Fallback to canvas resizing with reasonable defaults
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxWidth = 1280;
+          const maxHeight = 720;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            resolve(new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            }));
+          }, 'image/jpeg', 0.8);
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
-    } else {
-      setImagePreview(null);
-    }
+    });
+  }
+};
+
+const handleFileChange = async (e) => {
+  const file = e.target.files?.[0] || null;
+  
+  if (!file) {
+    setImageFile(null);
+    setImagePreview(null);
+    return;
+  }
+
+  // Compress the image (will use webp when possible) and set it for upload
+  const compressedFile = await compressImage(file);
+  setImageFile(compressedFile);
+  
+  // Create preview from the compressed file
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    setImagePreview(reader.result);
   };
+  reader.readAsDataURL(compressedFile);
+  
+  console.log('Selected image info:', {
+    name: file.name,
+    originalKB: Math.round(file.size / 1024),
+    finalKB: Math.round((compressedFile.size || 0) / 1024)
+  });
+};
+
+
 
   const handleIngredientChange = (index, value) => {
     const newIngredients = [...formData.ingredients];

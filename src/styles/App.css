@@ -176,43 +176,67 @@ body {
 
 .nav {
   display: flex;
-  gap: 32px;
+  gap: 16px;
   margin-left: auto;
-  
+  align-items: center;
 }
 
-.nav a:hover {
+.nav a:hover,
+.nav button:hover {
   color: #111827;
+  transform: translateY(-1px);
 }
 
 .nav a,
+.nav button,
 .nav .add-recipe-link,
-.nav .login-link {
+.nav .login-link,
+.nav .signup-link,
+.nav .dropdown-btn,
+.nav .user-btn {
   text-decoration: none;
   color: #374151;
   font-size: 14px;
-  transition: all 0.3s;
-  display: inline-block;
-}
-
-.add-recipe-link {
-  background: #8b5cf6;
-  color: white !important;
-  padding: 8px 16px;
+  font-family: inherit;
+  transition: background 0.2s, transform 0.12s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
   border-radius: 6px;
-  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
-.add-recipe-link:hover {
+/* Keep dropdown and user buttons visually matching other nav buttons */
+.nav .dropdown-btn,
+.nav .user-btn {
+  background: #ffffff;
+  color: #374151;
+}
+
+.nav .add-recipe-link {
+  background: #8b5cf6;
+  color: #ffffff !important;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  box-shadow: 0 6px 14px rgba(139,92,246,0.16);
+  transition: background 0.2s, transform 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav .add-recipe-link:hover {
   background: #7c3aed;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .login-link {
   background: #f3f4f6;
   color: #374151 !important;
-  padding: 8px 16px;
-  border-radius: 6px;
   font-weight: 500;
 }
 
@@ -226,8 +250,8 @@ body {
   display: inline-block;
 }
 .dropdown-btn {
-  background: #f3f4f6;
-  color: #374151;
+  background: #ffffff;
+  color: #ffffff;
   border-radius: 6px;
   border: none;
   cursor: pointer;
@@ -236,7 +260,7 @@ body {
 }
 .dropdown-btn:hover,
 .dropdown-btn:focus {
-  background: #e5e7eb;
+  background: #ffffff;
   transform: translateY(-1px);
   outline: none;
 }
@@ -264,6 +288,7 @@ body {
   display: block;
 }
 
+/*buttons on dropdown "Recipes"*/
 .dropdown-content a {
   color: #374151;
   padding: 10px 16px;
@@ -298,28 +323,53 @@ body {
   grid-auto-rows: 1fr; /* ensure cards in a row are equal height */
 }
 
-.add-recipe-link {
+.nav .add-recipe-link {
   background: #8b5cf6;
-  color: white !important;
-  padding: 8px 16px;
+  color: #ffffff !important;
+  padding: 8px 14px;
   border-radius: 6px;
-  transition: background 0.3s;
+  font-weight: 600;
+  box-shadow: 0 6px 14px rgba(139,92,246,0.16);
+  transition: background 0.2s, transform 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.add-recipe-link:hover {
+.nav .add-recipe-link:hover {
   background: #7c3aed;
+  transform: translateY(-2px);
 }
 
 .login-link {
   background: #ffffff;
   color: #374151 !important;
-  padding: 8px 16px;
-  border-radius: 6px;
+  font-weight: 500;
   transition: background 0.3s;
 }
 
 .login-link:hover {
   background: #e5e7eb;
+}
+
+.no-recipes {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  border: 2px dashed #e5e7eb;
+}
+
+.no-recipes p:first-child {
+  font-size: 18px;
+  color: #1f2937;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.no-recipes p:last-child {
+  color: #6b7280;
+  font-size: 14px;
 }
 
 @media (max-width: 1200px) {
