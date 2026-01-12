@@ -6,6 +6,7 @@ import Signup from "./components/Auth/Signup.jsx";
 import Login from "./components/Auth/Login.jsx";
 import AddRecipe from "./components/Recipe/AddRecipes.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import Popular from "./pages/Popular.jsx";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { AdminProvider } from "./contexts/AdminContext";
@@ -22,6 +23,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/search-ingredients" element={<SearchByIngredients />} />
             <Route path="/populate" element={<PopulateIngredients />} />
+            <Route path="/popular" element={<Popular />} />
+            
             <Route
               path="/add-recipe"
               element={

@@ -70,7 +70,7 @@ function HomePage() {
 
           <nav className="nav">
             <Link to="/">Home</Link>
-            <a href="#popular">Popular</a>
+            <Link to="popular">Popular</Link>
 
             <div className="dropdown">
               <button className="dropdown-btn">Recipes ▼</button>
