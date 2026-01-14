@@ -175,11 +175,7 @@ function SearchByIngredients() {
 
   return (
     <div className="search-ingredients-page">
-      {/* Header */}
-      <header className="search-header">
-        <button className="back-btn" onClick={() => navigate('/')}>← Back</button>
-        <h1 className="logo">CookEase</h1>
-      </header>
+      
 
       <main className="search-main">
         <div className="search-container">

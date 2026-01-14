@@ -9,7 +9,6 @@ const ingredientsData = [
   { name: "onion", category: "vegetable", image: "/images/ingredients/onion.jpg" },
   { name: "egg", category: "dairy", image: "/images/ingredients/egg.jpg" },
   { name: "salt", category: "spice", image: "/images/ingredients/salt.jpg" },
-  // add all your other ingredients here
 ];
 
 // Step 2: Function to add ingredients to Firestore

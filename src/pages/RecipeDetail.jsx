@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { recipes as localRecipes } from '../components/data/recipes.js';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import '../styles/RecipeDetail.css';
 
@@ -36,6 +36,24 @@ function RecipeDetail() {
     };
 
     fetchRecipe();
+  }, [id, localMatch]);
+
+  useEffect(() => {
+    // Only increment for Firebase recipes, not local ones
+    if (localMatch) return;
+  
+    const incrementViews = async () => {
+      try {
+        const recipeRef = doc(db, 'recipes', id);
+        await updateDoc(recipeRef, {
+          views: increment(1)
+        });
+      } catch (error) {
+        console.error('Error incrementing views:', error);
+      }
+    };
+  
+    incrementViews();
   }, [id, localMatch]);
 
   const toggleIngredient = (index) => {

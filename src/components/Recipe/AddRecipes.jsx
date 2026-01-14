@@ -1,268 +1,193 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from '../../contexts/AuthContext';
-import { db, storage } from '../../firebase/config';
-import { collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import '../../styles/AddRecipes.css';
-import imageCompression from 'browser-image-compression';
+import { useAuth } from "../../contexts/AuthContext";
+import { db, storage } from "../../firebase/config";
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  serverTimestamp
+} from "firebase/firestore";
+import {
+  ref as storageRef,
+  uploadBytesResumable,
+  getDownloadURL
+} from "firebase/storage";
+import imageCompression from "browser-image-compression";
+import "../../styles/AddRecipes.css";
+
+/* 🔤 Helper: make safe filenames */
+const slugify = (text = "") =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 
 function AddRecipe() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  
 
+  /* 🔒 Redirect if not logged in */
   useEffect(() => {
     if (user === null) {
-      navigate('/login', { state: { from: location } });
+      navigate("/login", { state: { from: location } });
     }
   }, [user, navigate, location]);
 
+  /* 📄 Form State */
   const [formData, setFormData] = useState({
-    title: '',
-    category: 'lunch',
-    cuisine: 'filipino',
-    difficulty: 'Easy',
-    prepTime: '',
-    cookTime: '',
-    servings: '',
-    description: '',
-    ingredients: [''],
-    instructions: ['']
+    title: "",
+    category: "lunch",
+    cuisine: "filipino",
+    difficulty: "Easy",
+    prepTime: "",
+    cookTime: "",
+    servings: "",
+    description: "",
+    ingredients: [""],
+    instructions: []
   });
-  
+
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadPercent, setUploadPercent] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
+  /* ✏️ Input Change */
   const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  /* 🖼 Image Compression */
+  const compressImage = async (file) => {
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 1280,
+        useWebWorker: true,
+        fileType: "image/webp"
+      });
+
+      return new File(
+        [compressed],
+        file.name.replace(/\..+$/, ".webp"),
+        { type: "image/webp" }
+      );
+    } catch {
+      return file;
+    }
+  };
+
+  /* 📷 File Select */
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const compressed = await compressImage(file);
+    setImageFile(compressed);
+
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result);
+    reader.readAsDataURL(compressed);
+  };
+
+  /* 🧂 Ingredients */
+  const handleIngredientChange = (i, v) => {
+    const items = [...formData.ingredients];
+    items[i] = v;
+    setFormData({ ...formData, ingredients: items });
+  };
+
+  const addIngredient = () =>
+    setFormData({ ...formData, ingredients: [...formData.ingredients, ""] });
+
+  const removeIngredient = (i) =>
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      ingredients: formData.ingredients.filter((_, idx) => idx !== i)
     });
+
+  /* 📋 Instructions */
+  const handleInstructionChange = (i, v) => {
+    const steps = [...formData.instructions];
+    steps[i] = v;
+    setFormData({ ...formData, instructions: steps });
   };
 
-const compressImage = async (file, options = { maxSizeMB: 0.5, maxWidthOrHeight: 1280, useWebWorker: true, initialQuality: 0.75, fileType: 'image/webp' }) => {
-  try {
-    // Use browser-image-compression to compress and convert to webp by default
-    const compressedBlob = await imageCompression(file, options);
-    const newName = file.name.replace(/\.[^/.]+$/, '.webp');
-    const compressedFile = new File([compressedBlob], newName, {
-      type: 'image/webp',
-      lastModified: Date.now()
-    });
-
-    console.log('Image compressed:', {
-      originalKB: Math.round(file.size / 1024),
-      compressedKB: Math.round(compressedFile.size / 1024)
-    });
-
-    return compressedFile;
-  } catch (err) {
-    console.warn('Compression via browser-image-compression failed, falling back to canvas resize:', err);
-    // Fallback to canvas resizing with reasonable defaults
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const maxWidth = 1280;
-          const maxHeight = 720;
-
-          if (width > height) {
-            if (width > maxWidth) {
-              height = (height * maxWidth) / width;
-              width = maxWidth;
-            }
-          } else {
-            if (height > maxHeight) {
-              width = (width * maxHeight) / height;
-              height = maxHeight;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob((blob) => {
-            resolve(new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            }));
-          }, 'image/jpeg', 0.8);
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-};
-
-const handleFileChange = async (e) => {
-  const file = e.target.files?.[0] || null;
-  
-  if (!file) {
-    setImageFile(null);
-    setImagePreview(null);
-    return;
-  }
-
-  // Compress the image (will use webp when possible) and set it for upload
-  const compressedFile = await compressImage(file);
-  setImageFile(compressedFile);
-  
-  // Create preview from the compressed file
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    setImagePreview(reader.result);
-  };
-  reader.readAsDataURL(compressedFile);
-  
-  console.log('Selected image info:', {
-    name: file.name,
-    originalKB: Math.round(file.size / 1024),
-    finalKB: Math.round((compressedFile.size || 0) / 1024)
-  });
-};
-
-
-
-  const handleIngredientChange = (index, value) => {
-    const newIngredients = [...formData.ingredients];
-    newIngredients[index] = value;
-    setFormData({ ...formData, ingredients: newIngredients });
-  };
-
-  const addIngredient = () => {
+  const addInstruction = () =>
     setFormData({
       ...formData,
-      ingredients: [...formData.ingredients, '']
+      instructions: [...formData.instructions, ""]
     });
-  };
 
-  const removeIngredient = (index) => {
-    const newIngredients = formData.ingredients.filter((_, i) => i !== index);
-    setFormData({ ...formData, ingredients: newIngredients });
-  };
-
-  const handleInstructionChange = (index, value) => {
-    const newInstructions = [...formData.instructions];
-    newInstructions[index] = value;
-    setFormData({ ...formData, instructions: newInstructions });
-  };
-
-  const addInstruction = () => {
+  const removeInstruction = (i) =>
     setFormData({
       ...formData,
-      instructions: [...formData.instructions, '']
+      instructions: formData.instructions.filter((_, idx) => idx !== i)
     });
-  };
 
-  const removeInstruction = (index) => {
-    const newInstructions = formData.instructions.filter((_, i) => i !== index);
-    setFormData({ ...formData, instructions: newInstructions });
-  };
-
+  /* 🚀 Submit */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('handleSubmit triggered');
-    setError('');
     setSubmitting(true);
-
-    // Filter out empty ingredients and instructions
-    const cleanedData = {
-      ...formData,
-      ingredients: formData.ingredients.filter(ing => ing.trim() !== ''),
-      instructions: formData.instructions.filter(inst => inst.trim() !== '')
-    };
+    setError("");
 
     try {
-      // Build partial recipe object and create document first so we can return early
-      const recipePartial = {
-        title: cleanedData.title,
-        category: cleanedData.category,
-        cuisine: cleanedData.cuisine,
-        difficulty: cleanedData.difficulty,
-        prepTime: cleanedData.prepTime,
-        cookTime: cleanedData.cookTime,
-        servings: cleanedData.servings ? Number(cleanedData.servings) : 4,
-        description: cleanedData.description,
-        image: '', // empty until upload finishes
-        ingredients: cleanedData.ingredients,
-        instructions: cleanedData.instructions,
-        ownerId: user?.uid || null,
-        ownerName: user?.displayName || user?.email || 'Anonymous',
-        createdAt: serverTimestamp(),
-        rating: 0,
-        status: imageFile ? 'uploading' : 'done'
+      const cleaned = {
+        ...formData,
+        ingredients: formData.ingredients.filter(i => i.trim()),
+        instructions: formData.instructions.filter(i => i.trim())
       };
 
-      console.log('Creating recipe doc (non-blocking):', recipePartial);
+      /* 📌 Create recipe FIRST */
+      const docRef = await addDoc(collection(db, "recipes"), {
+        ...cleaned,
+        image: "",
+        ownerId: user.uid,
+        ownerName: user.displayName || user.email,
+        rating: 0,
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
 
-      const recipesCol = collection(db, 'recipes');
-      const docRef = await addDoc(recipesCol, recipePartial);
+      alert("Recipe submitted for review!");
+      navigate("/");
 
-      console.log('Recipe created with ID:', docRef.id);
-
-      // Navigate back immediately so user isn't waiting for image upload
-      alert('Recipe added! Image upload will continue in the background.');
-      navigate('/');
-
-      // If there's an image, upload it in background and update the doc when done
+      /* 🧵 Upload image in background */
       if (imageFile) {
-        try {
-          console.log('Background upload started for:', docRef.id);
-          const timestamp = Date.now();
-          const fileRef = storageRef(
-            storage,
-            `recipes/${user.uid}/${docRef.id}_${timestamp}_${imageFile.name}`
-          );
-          const uploadTask = uploadBytesResumable(fileRef, imageFile);
+        const safeTitle = slugify(cleaned.title);
 
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-              setUploadPercent(percent);
-              console.log(`Background upload is ${percent}% done`);
-            },
-            async (error) => {
-              console.error('Background upload error:', error);
-              // mark doc as failed
-              try { await updateDoc(docRef, { status: 'failed' }); } catch (e) { console.error('Failed to update doc status:', e); }
-            },
-            async () => {
-              try {
-                const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-                console.log('Background file available at:', downloadUrl);
-                // Update the Firestore doc with the image URL and mark as done
-                await updateDoc(docRef, { image: downloadUrl, status: 'done' });
-              } catch (error) {
-                console.error('Error getting download URL in background:', error);
-                try { await updateDoc(docRef, { status: 'failed' }); } catch (e) { console.error('Failed to update doc status:', e); }
-              } finally {
-                setUploadPercent(0);
-              }
-            }
-          );
-        } catch (bgErr) {
-          console.error('Background upload setup failed:', bgErr);
-          try { await updateDoc(docRef, { status: 'failed' }); } catch (e) { console.error('Failed to update doc status:', e); }
-        }
+        const fileRef = storageRef(
+          storage,
+          `recipes/${user.uid}/${safeTitle}-${docRef.id}.webp`
+        );
+
+        const uploadTask = uploadBytesResumable(fileRef, imageFile);
+
+        uploadTask.on(
+          "state_changed",
+          (snap) => {
+            setUploadPercent(
+              Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
+            );
+          },
+          async () => {
+            await updateDoc(docRef, { status: "failed" });
+          },
+          async () => {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            await updateDoc(docRef, { image: url });
+            setUploadPercent(0);
+          }
+        );
       }
-
     } catch (err) {
-      console.error('Error adding recipe:', err);
-      setError(err?.message || String(err));
-      alert('Failed to add recipe. Check console for details.');
+      console.error(err);
+      setError("Failed to submit recipe.");
     } finally {
       setSubmitting(false);
     }
@@ -270,251 +195,105 @@ const handleFileChange = async (e) => {
 
   return (
     <div className="add-recipe-page">
-      <header className="add-recipe-header">
-        <button className="back-btn" onClick={() => navigate('/')}>
-          ← Back
-        </button>
-        <h1 className="logo">CookEase</h1>
-      </header>
-
-      <main className="add-recipe-main">
+      <div className="add-recipe-main">
         <div className="add-recipe-container">
-          <h2 className="page-title">Share Your Recipe</h2>
-          <p className="page-subtitle">Fill in the details below to add your recipe</p>
+          <h1 className="page-title">Share Your Recipe</h1>
+          <p className="page-subtitle">
+            Fill in the details below to add your recipe
+          </p>
 
-          <form className="recipe-form" onSubmit={handleSubmit} noValidate>
+          <form className="recipe-form" onSubmit={handleSubmit}>
             {error && <div className="form-error">{error}</div>}
 
-            {/* Basic Info Section */}
+            {/* BASIC INFO */}
             <div className="form-section">
               <h3>Basic Information</h3>
-
               <div className="form-group">
-                <label htmlFor="title">Recipe Title *</label>
+                <label>Recipe Title</label>
                 <input
-                  type="text"
-                  id="title"
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  placeholder="e.g., Spicy Chicken Adobo"
+                  placeholder="e.g. Spicy Chicken Adobo"
                   required
                 />
               </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="category">Category *</label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="breakfast">Breakfast</option>
-                    <option value="lunch">Lunch</option>
-                    <option value="dinner">Dinner</option>
-                    <option value="dessert">Dessert</option>
-                    <option value="snacks">Snacks</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="cuisine">Cuisine *</label>
-                  <select
-                    id="cuisine"
-                    name="cuisine"
-                    value={formData.cuisine}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="filipino">Filipino</option>
-                    <option value="asian">Asian</option>
-                    <option value="western">Western</option>
-                    <option value="international">International</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="difficulty">Difficulty *</label>
-                  <select
-                    id="difficulty"
-                    name="difficulty"
-                    value={formData.difficulty}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="prepTime">Prep Time</label>
-                  <input
-                    type="text"
-                    id="prepTime"
-                    name="prepTime"
-                    value={formData.prepTime}
-                    onChange={handleChange}
-                    placeholder="e.g., 15 minutes"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="cookTime">Cook Time</label>
-                  <input
-                    type="text"
-                    id="cookTime"
-                    name="cookTime"
-                    value={formData.cookTime}
-                    onChange={handleChange}
-                    placeholder="e.g., 30 minutes"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="servings">Servings</label>
-                  <input
-                    type="number"
-                    id="servings"
-                    name="servings"
-                    value={formData.servings}
-                    onChange={handleChange}
-                    placeholder="4"
-                    min="1"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="description">Description</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Tell us about this recipe..."
-                  rows="3"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="imageFile">Recipe Image</label>
-                <input
-                  type="file"
-                  id="imageFile"
-                  name="imageFile"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
-                {imagePreview && (
-                  <div className="image-preview">
-                    <img src={imagePreview} alt="Preview" style={{ maxWidth: '200px', marginTop: '10px', borderRadius: '8px' }} />
-                  </div>
-                )}
-                {uploadPercent > 0 && uploadPercent < 100 && (
-                  <div className="upload-progress">
-                    <div className="progress-bar" style={{ width: `${uploadPercent}%` }}></div>
-                    <span>Uploading: {uploadPercent}%</span>
-                  </div>
-                )}
-              </div>
             </div>
 
-            {/* Ingredients Section */}
+            {/* IMAGE */}
+            <div className="form-section">
+              <h3>Recipe Image</h3>
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+              {imagePreview && <img src={imagePreview} alt="preview" width={200} />}
+              {uploadPercent > 0 && <p>Uploading: {uploadPercent}%</p>}
+            </div>
+
+            {/* INGREDIENTS */}
             <div className="form-section">
               <h3>Ingredients</h3>
-              {formData.ingredients.map((ingredient, index) => (
-                <div key={index} className="dynamic-field">
+              {formData.ingredients.map((item, idx) => (
+                <div key={idx} className="dynamic-field">
                   <input
-                    type="text"
-                    value={ingredient}
-                    onChange={(e) => handleIngredientChange(index, e.target.value)}
-                    placeholder={`Ingredient ${index + 1}`}
-                    required
+                    value={item}
+                    onChange={(e) => handleIngredientChange(idx, e.target.value)}
+                    placeholder={`Ingredient ${idx + 1}`}
                   />
-                  {formData.ingredients.length > 1 && (
-                    <button
-                      type="button"
-                      className="remove-btn"
-                      onClick={() => removeIngredient(index)}
-                    >
-                      ✕
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="remove-btn"
+                    onClick={() => removeIngredient(idx)}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
-              <button
-                type="button"
-                className="add-btn"
-                onClick={addIngredient}
-              >
+              <button type="button" className="add-btn" onClick={addIngredient}>
                 + Add Ingredient
               </button>
             </div>
 
-            {/* Instructions Section */}
+            {/* INSTRUCTIONS */}
             <div className="form-section">
               <h3>Instructions</h3>
-              {formData.instructions.map((instruction, index) => (
-                <div key={index} className="dynamic-field">
-                  <span className="step-number" aria-label={`Step ${index + 1}`}>
+              {formData.instructions.map((step, idx) => (
+                <div key={idx} className="dynamic-field">
+                  <div className="step-number">
                     <span className="step-label">Step</span>
-                    <span className="step-count">{index + 1}</span>
-                  </span>
+                    <span className="step-count">{idx + 1}</span>
+                  </div>
                   <textarea
-                    value={instruction}
-                    onChange={(e) => handleInstructionChange(index, e.target.value)}
+                    value={step}
+                    onChange={(e) =>
+                      handleInstructionChange(idx, e.target.value)
+                    }
                     placeholder="Describe this step..."
-                    rows="3"
-                    required
                   />
-                  {formData.instructions.length > 1 && (
-                    <button
-                      type="button"
-                      className="remove-btn"
-                      onClick={() => removeInstruction(index)}
-                    >
-                      ✕
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="remove-btn"
+                    onClick={() => removeInstruction(idx)}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
-              <button
-                type="button"
-                className="add-btn"
-                onClick={addInstruction}
-              >
+              <button type="button" className="add-btn" onClick={addInstruction}>
                 + Add Step
               </button>
             </div>
 
-            {/* Submit Button */}
+            {/* ACTIONS */}
             <div className="form-actions">
-              <button
-                type="button"
-                className="cancel-btn"
-                onClick={() => navigate('/')}
-                disabled={submitting}
-              >
+              <button type="button" className="cancel-btn" onClick={() => navigate("/")}>
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="submit-btn"
-                disabled={submitting}
-              >
-                {submitting ? 'Publishing...' : 'Publish Recipe'}
+              <button type="submit" className="submit-btn" disabled={submitting}>
+                {submitting ? "Publishing..." : "Publish Recipe"}
               </button>
             </div>
           </form>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
