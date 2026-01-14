@@ -1,8 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { recipes as localRecipes } from '../components/data/recipes.js';
-import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import '../styles/RecipeDetail.css';
 
 function RecipeDetail() {

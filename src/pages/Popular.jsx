@@ -66,66 +66,7 @@ const Popular = () => {
 
   return (
     <div className="popular-page-wrapper">
-      
-      {/* Header Section */}
-      <header className="header">
-        <div className="header-content">
-          <button className="menu-btn">☰</button>
-          <h1 className="logo">CookEase</h1>
-
-          <div className="search-bar">
-            <input type="text" placeholder="Search" />
-            <button>🔍</button>
-          </div>
-
-          <nav className="nav">
-            <Link to="/">Home</Link>
-            <Link to="/popular">Popular</Link>
-
-            <div className="dropdown">
-              <button className="dropdown-btn">Recipes ▼</button>
-              <div className="dropdown-content">
-                <a href="#course">By Course</a>
-                <Link to="/search-ingredients">By Ingredients</Link>
-              </div>
-            </div>
-
-            <a href="#about">About Us</a>
-
-            <Link to="/add-recipe" className="add-recipe-link">
-              + Add Recipe
-            </Link>
-
-            {user ? (
-              <div className="user-menu">
-                <button
-                  className="user-btn"
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                >
-                  👤 {user.displayName || 'User'} ▼
-                </button>
-
-                {showUserMenu && (
-                  <div className="user-dropdown">
-                    <Link to="/profile" onClick={() => setShowUserMenu(false)}>
-                      My Profile
-                    </Link>
-                    <Link to="/my-recipes" onClick={() => setShowUserMenu(false)}>
-                      My Recipes
-                    </Link>
-                    <button onClick={handleLogout}>Logout</button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <Link to="/login" className="login-link">Login</Link>
-                <Link to="/signup" className="signup-link">Sign Up</Link>
-              </>
-            )}
-          </nav>
-        </div>
-      </header>
+      gutdsad
 
       {/* Main Content */}
       <div className="popular-container">
