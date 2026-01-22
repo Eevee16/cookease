@@ -50,7 +50,7 @@ function Layout({ children }) {
               <button className="dropdown-btn">Discover ▼</button>
 
               <div className={`dropdown-content ${showRecipesDropdown ? "show" : ""}`}>
-                <a href="#course">By Course</a>
+                <Link to="/search-course-cuisine">By Course</Link>
                 <Link to="/search-ingredients">By Ingredients</Link>
               </div>
             </div>

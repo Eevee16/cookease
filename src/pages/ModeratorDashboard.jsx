@@ -3,13 +3,23 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useModerator } from '../contexts/ModeratorContext';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase/config';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  serverTimestamp,
+} from 'firebase/firestore';
 import '../styles/ModeratorDashboard.css';
 
 function ModeratorDashboard() {
   const { isModerator, loading: moderatorLoading } = useModerator();
   const { user } = useAuth();
   const navigate = useNavigate();
+
   const [pendingRecipes, setPendingRecipes] = useState([]);
   const [approvedRecipes, setApprovedRecipes] = useState([]);
   const [rejectedRecipes, setRejectedRecipes] = useState([]);
@@ -32,46 +42,57 @@ function ModeratorDashboard() {
   }, [isModerator]);
 
   const fetchRecipes = async () => {
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const snapshot = await getDocs(
-      query(
-        collection(db, 'recipes'),
-        orderBy('createdAt', 'desc')
-      )
-    );
+    try {
+      const snapshot = await getDocs(
+        query(collection(db, 'recipes'), orderBy('createdAt', 'desc'))
+      );
 
-    const allRecipes = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+      const allRecipes = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      }));
 
-    // Treat missing status as "pending"
-    const pending = allRecipes.filter(
-      r => !r.status || r.status === 'pending'
-    );
-    const approved = allRecipes.filter(
-      r => r.status === 'approved'
-    );
-    const rejected = allRecipes.filter(
-      r => r.status === 'rejected'
-    );
+      const pending = allRecipes.filter(r => !r.status || r.status === 'pending');
+      const approved = allRecipes.filter(r => r.status === 'approved');
+      const rejected = allRecipes.filter(r => r.status === 'rejected');
 
-    setPendingRecipes(pending);
-    setApprovedRecipes(approved);
-    setRejectedRecipes(rejected);
+      setPendingRecipes(pending);
+      setApprovedRecipes(approved);
+      setRejectedRecipes(rejected);
+    } catch (error) {
+      console.error('Error fetching recipes:', error);
+      alert('Failed to load recipes');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  } catch (error) {
-    console.error('Error fetching recipes:', error);
-    alert('Failed to load recipes');
-  } finally {
-    setLoading(false);
-  }
-};
+  // ✅ APPROVE / RE-APPROVE RECIPE
+  const handleApprove = async (recipeId) => {
+    if (!user) {
+      alert('You must be logged in to approve recipes');
+      return;
+    }
 
+    try {
+      await updateDoc(doc(db, 'recipes', recipeId), {
+        status: 'approved',
+        reviewedBy: user.uid,
+        reviewedAt: serverTimestamp(),
+        rejectionReason: '',
+      });
 
-  const handleReject = async (recipeId) => {
+      alert('Recipe approved');
+      fetchRecipes();
+    } catch (error) {
+      console.error('Error approving recipe:', error);
+      alert('Failed to approve recipe');
+    }
+  };
+
+  const handleReject = (recipeId) => {
     setSelectedRecipe(recipeId);
   };
 
@@ -83,10 +104,10 @@ function ModeratorDashboard() {
 
     try {
       await updateDoc(doc(db, 'recipes', selectedRecipe), {
-        status: 'rejected',
+        status: 'rejected ',
         reviewedBy: user.uid,
         reviewedAt: serverTimestamp(),
-        rejectionReason: rejectionReason
+        rejectionReason: rejectionReason.trim(),
       });
       alert('Recipe rejected');
       setSelectedRecipe(null);
@@ -99,9 +120,7 @@ function ModeratorDashboard() {
   };
 
   const handleDelete = async (recipeId) => {
-    if (!window.confirm('Permanently delete this recipe?')) {
-      return;
-    }
+    if (!window.confirm('Permanently delete this recipe?')) return;
 
     try {
       await deleteDoc(doc(db, 'recipes', recipeId));
@@ -124,14 +143,14 @@ function ModeratorDashboard() {
     );
   }
 
-  if (!isModerator) {
-    return null;
-  }
+  if (!isModerator) return null;
 
-  const currentRecipes = 
-    activeTab === 'pending' ? pendingRecipes :
-    activeTab === 'approved' ? approvedRecipes :
-    rejectedRecipes;
+  const currentRecipes =
+    activeTab === 'pending'
+      ? pendingRecipes
+      : activeTab === 'approved'
+      ? approvedRecipes
+      : rejectedRecipes;
 
   return (
     <div className="moderator-dashboard">
@@ -143,7 +162,6 @@ function ModeratorDashboard() {
       </header>
 
       <div className="moderator-main">
-        {/* Stats Cards */}
         <div className="stats-cards">
           <div className="stat-card pending">
             <h3>Pending Review</h3>
@@ -159,29 +177,18 @@ function ModeratorDashboard() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="moderator-tabs">
-          <button
-            className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
-            onClick={() => setActiveTab('pending')}
-          >
-            Pending ({pendingRecipes.length})
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'approved' ? 'active' : ''}`}
-            onClick={() => setActiveTab('approved')}
-          >
-            Approved ({approvedRecipes.length})
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'rejected' ? 'active' : ''}`}
-            onClick={() => setActiveTab('rejected')}
-          >
-            Rejected ({rejectedRecipes.length})
-          </button>
+          {['pending', 'approved', 'rejected'].map(tab => (
+            <button
+              key={tab}
+              className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </div>
 
-        {/* Recipe List */}
         <div className="moderator-section">
           {currentRecipes.length === 0 ? (
             <div className="empty-state">
@@ -204,72 +211,38 @@ function ModeratorDashboard() {
                   {currentRecipes.map(recipe => (
                     <tr key={recipe.id}>
                       <td>
-                        <img 
-                          src={recipe.image || 'https://via.placeholder.com/100'} 
+                        <img
+                          src={recipe.image || 'https://via.placeholder.com/100'}
                           alt={recipe.title}
                           className="recipe-thumbnail"
                         />
                       </td>
-                      <td className="recipe-title-cell">{recipe.title}</td>
+                      <td>{recipe.title}</td>
                       <td>{recipe.ownerName || 'Unknown'}</td>
                       <td>
-                        {recipe.createdAt?.toDate 
-                          ? recipe.createdAt.toDate().toLocaleDateString() 
+                        {recipe.createdAt?.toDate
+                          ? recipe.createdAt.toDate().toLocaleDateString()
                           : 'N/A'}
                       </td>
                       {activeTab === 'rejected' && (
-                        <td className="rejection-reason">
-                          {recipe.rejectionReason || 'No reason provided'}
-                        </td>
+                        <td>{recipe.rejectionReason || 'No reason provided'}</td>
                       )}
                       <td className="action-buttons">
-                        <Link 
-                          to={`/recipe/${recipe.id}`} 
-                          className="btn-view"
-                          target="_blank"
-                        >
+                        <Link to={`/recipe/${recipe.id}`} target="_blank" className="btn-view">
                           View
                         </Link>
-                        
-                        {activeTab === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => handleApprove(recipe.id)}
-                              className="btn-approve"
-                            >
-                              ✓ Approve
-                            </button>
-                            <button
-                              onClick={() => handleReject(recipe.id)}
-                              className="btn-reject"
-                            >
-                              ✕ Reject
-                            </button>
-                          </>
-                        )}
-                        
-                        {activeTab === 'approved' && (
-                          <button
-                            onClick={() => handleReject(recipe.id)}
-                            className="btn-reject"
-                          >
-                            Unpublish
+
+                        {activeTab !== 'approved' && (
+                          <button onClick={() => handleApprove(recipe.id)} className="btn-approve">
+                            ✓ Approve
                           </button>
                         )}
 
-                        {activeTab === 'rejected' && (
-                          <button
-                            onClick={() => handleApprove(recipe.id)}
-                            className="btn-approve"
-                          >
-                            Re-approve
-                          </button>
-                        )}
-                        
-                        <button
-                          onClick={() => handleDelete(recipe.id)}
-                          className="btn-delete"
-                        >
+                        <button onClick={() => handleReject(recipe.id)} className="btn-reject">
+                          ✕ Reject
+                        </button>
+
+                        <button onClick={() => handleDelete(recipe.id)} className="btn-delete">
                           Delete
                         </button>
                       </td>
@@ -282,24 +255,22 @@ function ModeratorDashboard() {
         </div>
       </div>
 
-      {/* Rejection Modal */}
       {selectedRecipe && (
         <div className="modal-overlay" onClick={() => setSelectedRecipe(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Reject Recipe</h3>
-            <p>Please provide a reason for rejection:</p>
             <textarea
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="e.g., Inappropriate content, unclear instructions, missing information..."
               rows="4"
+              placeholder="Reason for rejection..."
             />
             <div className="modal-actions">
               <button onClick={() => setSelectedRecipe(null)} className="btn-cancel">
                 Cancel
               </button>
               <button onClick={confirmReject} className="btn-confirm-reject">
-                Reject Recipe
+                Reject
               </button>
             </div>
           </div>

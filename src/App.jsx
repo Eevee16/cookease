@@ -12,6 +12,8 @@ import ProtectedRoute from "./components/ProtectedRoute"; // ← FIXED PATH
 import Login from "./components/Auth/Login.jsx";
 import SearchByIngredients from "./pages/SearchByIngredients.jsx";
 import ModeratorDashboard from "./pages/ModeratorDashboard.jsx";
+import SearchByCourseCuisine from "./pages/SearchByCourseCuisine.jsx";
+
 
 function App() {
   return (
@@ -25,6 +27,7 @@ function App() {
               <Route path="/signup" element={<Signup />} />
               <Route path="/login" element={<Login />} />
               <Route path="/search-ingredients" element={<SearchByIngredients />} />
+              <Route path="/search-course-cuisine" element={<SearchByCourseCuisine />} />
               <Route path="/moderator" element={<ModeratorDashboard />} />
               <Route path="/popular" element={<Popular />} />
               <Route

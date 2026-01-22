@@ -1,95 +1,111 @@
 import { useState, useEffect } from 'react';
 import '../styles/IngredientFilter.css';
+import IngredientFilter from './IngredientFilter';
+
+const publicRecipes = [
+  { id: 1, ingredients: ['chicken', 'onion', 'garlic', 'rice'] },
+  { id: 2, ingredients: ['beef', 'egg', 'tomato'] },
+  { id: 3, ingredients: ['pork', 'onion', 'cheese'] },
+];
+
+// userRecipes can come from your app's state or API
+const userRecipes = [
+  /* user specific recipe objects */
+];
+
+function ParentComponent({ isLoggedIn }) {
+  // Select which recipes to show
+  const recipesToShow = isLoggedIn ? userRecipes : publicRecipes;
+
+  const handleFilteredRecipes = (filteredRecipes) => {
+    // Do something with filtered recipes (optional)
+    console.log('Filtered recipes:', filteredRecipes);
+  };
+
+  return (
+    <IngredientFilter
+      recipes={recipesToShow}
+      onFilteredRecipes={handleFilteredRecipes}
+    />
+  );
+}
+
+/* 🔹 IMAGE MAP */
+const ingredientImageMap = {
+  chicken: '/ingredients/chicken.jpg',
+  beef: '/ingredients/beef.jpg',
+  pork: '/ingredients/pork.jpg',
+  egg: '/ingredients/egg.jpg',
+  onion: '/ingredients/onion.jpg',
+  garlic: '/ingredients/garlic.jpg',
+  tomato: '/ingredients/tomato.jpg',
+  rice: '/ingredients/rice.jpg',
+  cheese: '/ingredients/cheese.jpg',
+  milk: '/ingredients/milk.jpg',
+};
 
 function IngredientFilter({ recipes, onFilteredRecipes }) {
-  const [selectedIngredients, setSelectedIngredients] = useState([]);
+  // rest of your logic here
+}
+
+const getIngredientImage = (ingredient) =>
+  ingredientImageMap[ingredient] || '/ingredients/default.jpg';
+
+function IngredientFilter({ recipes, onFilteredRecipes }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [allIngredients, setAllIngredients] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Extract all unique ingredients from recipes
+
+
+  /* 🔹 Extract ingredients */
   useEffect(() => {
     const ingredientsSet = new Set();
-    
+
     recipes.forEach(recipe => {
-      if (Array.isArray(recipe.ingredients)) {
-        recipe.ingredients.forEach(ingredient => {
-          // Clean up ingredient text (remove quantities, get main ingredient)
-          const cleaned = ingredient
-            .toLowerCase()
-            .replace(/[0-9]/g, '') // Remove numbers
-            .replace(/cup|tablespoon|teaspoon|pound|ounce|gram|kg|lb|oz|tbsp|tsp/gi, '')
-            .replace(/minced|chopped|diced|sliced|crushed|ground/gi, '')
-            .trim();
-          
-          if (cleaned) {
-            ingredientsSet.add(cleaned);
-          }
-        });
-      }
+      recipe.ingredients?.forEach(ingredient => {
+        const cleaned = ingredient
+          .toLowerCase()
+          .replace(/[0-9]/g, '')
+          .replace(/cup|tablespoon|teaspoon|pound|ounce|gram|kg|lb|oz|tbsp|tsp/gi, '')
+          .replace(/minced|chopped|diced|sliced|crushed|ground/gi, '')
+          .trim();
+
+        if (cleaned) ingredientsSet.add(cleaned);
+      });
     });
 
-    const sortedIngredients = Array.from(ingredientsSet).sort();
-    setAllIngredients(sortedIngredients);
+    setAllIngredients(Array.from(ingredientsSet).sort());
   }, [recipes]);
 
-  // Filter recipes based on selected ingredients
+  /* 🔹 Filter recipes by SEARCH ONLY */
   useEffect(() => {
-    if (selectedIngredients.length === 0) {
+    if (!searchTerm) {
       onFilteredRecipes(recipes);
       return;
     }
 
-    const filtered = recipes.filter(recipe => {
-      if (!Array.isArray(recipe.ingredients)) return false;
-
-      return selectedIngredients.every(selectedIng => {
-        return recipe.ingredients.some(recipeIng => {
-          return recipeIng.toLowerCase().includes(selectedIng.toLowerCase());
-        });
-      });
-    });
+    const filtered = recipes.filter(recipe =>
+      recipe.ingredients?.some(ing =>
+        ing.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    );
 
     onFilteredRecipes(filtered);
-  }, [selectedIngredients, recipes, onFilteredRecipes]);
-
-  const toggleIngredient = (ingredient) => {
-    if (selectedIngredients.includes(ingredient)) {
-      setSelectedIngredients(selectedIngredients.filter(i => i !== ingredient));
-    } else {
-      setSelectedIngredients([...selectedIngredients, ingredient]);
-    }
-  };
-
-  const clearAll = () => {
-    setSelectedIngredients([]);
-    setSearchTerm('');
-  };
+  }, [searchTerm, recipes, onFilteredRecipes]);
 
   const filteredIngredients = allIngredients.filter(ingredient =>
-    ingredient.toLowerCase().includes(searchTerm.toLowerCase())
+    ingredient.includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="ingredient-filter">
       <div className="filter-header">
-        <button 
-          className="filter-toggle"
-          onClick={() => setIsOpen(!isOpen)}
-        >
+        <button className="filter-toggle" onClick={() => setIsOpen(!isOpen)}>
           <span className="filter-icon">🔍</span>
           <span>Filter by Ingredients</span>
-          {selectedIngredients.length > 0 && (
-            <span className="filter-count">{selectedIngredients.length}</span>
-          )}
           <span className={`arrow ${isOpen ? 'open' : ''}`}>▼</span>
         </button>
-
-        {selectedIngredients.length > 0 && (
-          <button className="clear-btn" onClick={clearAll}>
-            Clear All
-          </button>
-        )}
       </div>
 
       {isOpen && (
@@ -104,50 +120,29 @@ function IngredientFilter({ recipes, onFilteredRecipes }) {
             />
           </div>
 
-          {selectedIngredients.length > 0 && (
-            <div className="selected-ingredients">
-              <p className="selected-label">Selected:</p>
-              <div className="selected-chips">
-                {selectedIngredients.map(ingredient => (
-                  <div key={ingredient} className="ingredient-chip selected">
-                    <span>{ingredient}</span>
-                    <button
-                      onClick={() => toggleIngredient(ingredient)}
-                      className="chip-remove"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="ingredients-list">
-            {filteredIngredients.length > 0 ? (
-              filteredIngredients.map(ingredient => (
+          {/* 🔹 IMAGE SEARCH RESULTS ONLY */}
+          {searchTerm && filteredIngredients.length > 0 && (
+            <div className="ingredient-image-grid">
+              {filteredIngredients.slice(0, 8).map(ingredient => (
                 <div
                   key={ingredient}
-                  className={`ingredient-chip ${
-                    selectedIngredients.includes(ingredient) ? 'selected' : ''
-                  }`}
-                  onClick={() => toggleIngredient(ingredient)}
+                  className="ingredient-card"
+                  onClick={() => setSearchTerm(ingredient)}
                 >
-                  <span className="chip-checkbox">
-                    {selectedIngredients.includes(ingredient) ? '✓' : '○'}
-                  </span>
-                  <span>{ingredient}</span>
+                  <img
+                    src={getIngredientImage(ingredient)}
+                    alt={ingredient}
+                    className="ingredient-card-img"
+                  />
+                  <span className="ingredient-card-label">{ingredient}</span>
                 </div>
-              ))
-            ) : (
-              <p className="no-results">No ingredients found</p>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="filter-footer">
             <p className="results-count">
               Showing {recipes.length} recipe{recipes.length !== 1 ? 's' : ''}
-              {selectedIngredients.length > 0 && ` with selected ingredients`}
             </p>
           </div>
         </div>

@@ -16,7 +16,7 @@ import {
 import imageCompression from "browser-image-compression";
 import "../../styles/AddRecipes.css";
 
-/* 🔤 Helper: make safe filenames */
+/* 🔤 Helper */
 const slugify = (text = "") =>
   text
     .toLowerCase()
@@ -30,72 +30,45 @@ function AddRecipe() {
   const location = useLocation();
   const { user } = useAuth();
 
-  /* 🔒 Redirect if not logged in */
   useEffect(() => {
     if (user === null) {
       navigate("/login", { state: { from: location } });
     }
   }, [user, navigate, location]);
 
-  /* 📄 Form State */
+  /* OPTIONS */
+  const categoryOptions = [
+    "Breakfast","Lunch","Dinner","Dessert","Snacks","Appetizer","Soup","Salad","Beverage","Side Dish"
+  ];
+
+  const cuisineOptions = [
+    "Filipino","Chinese","Japanese","Korean","Thai","Vietnamese","Indian","Italian",
+    "French","American","Mexican","Spanish","Greek","Middle Eastern","African","Fusion"
+  ];
+
+  const difficultyOptions = ["Easy", "Medium", "Hard"];
+
+  /* STATE */
   const [formData, setFormData] = useState({
     title: "",
-    category: "lunch",
-    cuisine: "filipino",
-    difficulty: "Easy",
+    category: "",
+    cuisine: "",
+    difficulty: "",
     prepTime: "",
     cookTime: "",
-    servings: "",
-    description: "",
+    servings: "4",
     ingredients: [""],
-    instructions: []
+    instructions: [""]
   });
 
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [uploadPercent, setUploadPercent] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  /* ✏️ Input Change */
-  const handleChange = (e) => {
+  /* INPUT CHANGE */
+  const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
-  /* 🖼 Image Compression */
-  const compressImage = async (file) => {
-    try {
-      const compressed = await imageCompression(file, {
-        maxSizeMB: 0.5,
-        maxWidthOrHeight: 1280,
-        useWebWorker: true,
-        fileType: "image/webp"
-      });
-
-      return new File(
-        [compressed],
-        file.name.replace(/\..+$/, ".webp"),
-        { type: "image/webp" }
-      );
-    } catch {
-      return file;
-    }
-  };
-
-  /* 📷 File Select */
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const compressed = await compressImage(file);
-    setImageFile(compressed);
-
-    const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result);
-    reader.readAsDataURL(compressed);
-  };
-
-  /* 🧂 Ingredients */
+  /* INGREDIENTS */
   const handleIngredientChange = (i, v) => {
     const items = [...formData.ingredients];
     items[i] = v;
@@ -105,13 +78,15 @@ function AddRecipe() {
   const addIngredient = () =>
     setFormData({ ...formData, ingredients: [...formData.ingredients, ""] });
 
-  const removeIngredient = (i) =>
+  const removeIngredient = (i) => {
+    if (formData.ingredients.length === 1) return;
     setFormData({
       ...formData,
       ingredients: formData.ingredients.filter((_, idx) => idx !== i)
     });
+  };
 
-  /* 📋 Instructions */
+  /* INSTRUCTIONS */
   const handleInstructionChange = (i, v) => {
     const steps = [...formData.instructions];
     steps[i] = v;
@@ -124,129 +99,123 @@ function AddRecipe() {
       instructions: [...formData.instructions, ""]
     });
 
-  const removeInstruction = (i) =>
+  const removeInstruction = (i) => {
+    if (formData.instructions.length === 1) return;
     setFormData({
       ...formData,
       instructions: formData.instructions.filter((_, idx) => idx !== i)
     });
+  };
 
-  /* 🚀 Submit */
+  /* SUBMIT */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError("");
+    setFieldErrors({});
 
-    try {
-      const cleaned = {
-        ...formData,
-        ingredients: formData.ingredients.filter(i => i.trim()),
-        instructions: formData.instructions.filter(i => i.trim())
-      };
+    const cleaned = {
+      ...formData,
+      ingredients: formData.ingredients.filter(i => i.trim()),
+      instructions: formData.instructions.filter(i => i.trim())
+    };
 
-      /* 📌 Create recipe FIRST */
-      const docRef = await addDoc(collection(db, "recipes"), {
-        ...cleaned,
-        image: "",
-        ownerId: user.uid,
-        ownerName: user.displayName || user.email,
-        rating: 0,
-        status: "pending",
-        createdAt: serverTimestamp()
-      });
+    const errors = {};
+    if (!cleaned.title) errors.title = "Recipe title is required";
+    if (!cleaned.category) errors.category = "Please select a category";
+    if (!cleaned.cuisine) errors.cuisine = "Please select a cuisine";
+    if (!cleaned.difficulty) errors.difficulty = "Please select difficulty";
+    if (!cleaned.ingredients.length) errors.ingredients = "Add at least one ingredient";
+    if (!cleaned.instructions.length) errors.instructions = "Add at least one step";
 
-      alert("Recipe submitted for review!");
-      navigate("/");
-
-      /* 🧵 Upload image in background */
-      if (imageFile) {
-        const safeTitle = slugify(cleaned.title);
-
-        const fileRef = storageRef(
-          storage,
-          `recipes/${user.uid}/${safeTitle}-${docRef.id}.webp`
-        );
-
-        const uploadTask = uploadBytesResumable(fileRef, imageFile);
-
-        uploadTask.on(
-          "state_changed",
-          (snap) => {
-            setUploadPercent(
-              Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
-            );
-          },
-          async () => {
-            await updateDoc(docRef, { status: "failed" });
-          },
-          async () => {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            await updateDoc(docRef, { image: url });
-            setUploadPercent(0);
-          }
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Failed to submit recipe.");
-    } finally {
+    if (Object.keys(errors).length) {
+      setFieldErrors(errors);
       setSubmitting(false);
+      return;
     }
+
+    await addDoc(collection(db, "recipes"), {
+      ...cleaned,
+      image: "",
+      ownerId: user.uid,
+      ownerName: user.displayName || user.email,
+      rating: 0,
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
+
+    navigate("/");
   };
 
   return (
     <div className="add-recipe-page">
       <div className="add-recipe-main">
         <div className="add-recipe-container">
-          <h1 className="page-title">Share Your Recipe</h1>
-          <p className="page-subtitle">
-            Fill in the details below to add your recipe
-          </p>
+
+          <h1 className="page-title">Add New Recipe</h1>
+          <p className="page-subtitle">Share your favorite dish with others</p>
 
           <form className="recipe-form" onSubmit={handleSubmit}>
-            {error && <div className="form-error">{error}</div>}
 
             {/* BASIC INFO */}
             <div className="form-section">
               <h3>Basic Information</h3>
-              <div className="form-group">
-                <label>Recipe Title</label>
-                <input
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  placeholder="e.g. Spicy Chicken Adobo"
-                  required
-                />
-              </div>
-            </div>
 
-            {/* IMAGE */}
-            <div className="form-section">
-              <h3>Recipe Image</h3>
-              <input type="file" accept="image/*" onChange={handleFileChange} />
-              {imagePreview && <img src={imagePreview} alt="preview" width={200} />}
-              {uploadPercent > 0 && <p>Uploading: {uploadPercent}%</p>}
+              <div className="form-group">
+                <label>Recipe Title *</label>
+                <input name="title" value={formData.title} onChange={handleChange} />
+                {fieldErrors.title && <small className="field-error">{fieldErrors.title}</small>}
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Category *</label>
+                  <select name="category" value={formData.category} onChange={handleChange}>
+                    <option value="">Select...</option>
+                    {categoryOptions.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                  {fieldErrors.category && <small className="field-error">{fieldErrors.category}</small>}
+                </div>
+
+                <div className="form-group">
+                  <label>Cuisine *</label>
+                  <select name="cuisine" value={formData.cuisine} onChange={handleChange}>
+                    <option value="">Select...</option>
+                    {cuisineOptions.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                  {fieldErrors.cuisine && <small className="field-error">{fieldErrors.cuisine}</small>}
+                </div>
+
+                <div className="form-group">
+                  <label>Difficulty *</label>
+                  <select name="difficulty" value={formData.difficulty} onChange={handleChange}>
+                    <option value="">Select...</option>
+                    {difficultyOptions.map(d => <option key={d}>{d}</option>)}
+                  </select>
+                  {fieldErrors.difficulty && <small className="field-error">{fieldErrors.difficulty}</small>}
+                </div>
+              </div>
             </div>
 
             {/* INGREDIENTS */}
             <div className="form-section">
-              <h3>Ingredients</h3>
+              <h3>Ingredients *</h3>
+              {fieldErrors.ingredients && <small className="field-error">{fieldErrors.ingredients}</small>}
+
               {formData.ingredients.map((item, idx) => (
                 <div key={idx} className="dynamic-field">
                   <input
                     value={item}
-                    onChange={(e) => handleIngredientChange(idx, e.target.value)}
+                    onChange={e => handleIngredientChange(idx, e.target.value)}
                     placeholder={`Ingredient ${idx + 1}`}
                   />
-                  <button
-                    type="button"
-                    className="remove-btn"
-                    onClick={() => removeIngredient(idx)}
-                  >
-                    ✕
-                  </button>
+                  {formData.ingredients.length > 1 && (
+                    <button type="button" className="remove-btn" onClick={() => removeIngredient(idx)}>
+                      ✕
+                    </button>
+                  )}
                 </div>
               ))}
+
               <button type="button" className="add-btn" onClick={addIngredient}>
                 + Add Ingredient
               </button>
@@ -254,29 +223,30 @@ function AddRecipe() {
 
             {/* INSTRUCTIONS */}
             <div className="form-section">
-              <h3>Instructions</h3>
+              <h3>Instructions *</h3>
+              {fieldErrors.instructions && <small className="field-error">{fieldErrors.instructions}</small>}
+
               {formData.instructions.map((step, idx) => (
-                <div key={idx} className="dynamic-field">
+                <div key={idx} className="instruction-field">
                   <div className="step-number">
                     <span className="step-label">Step</span>
                     <span className="step-count">{idx + 1}</span>
                   </div>
+
                   <textarea
                     value={step}
-                    onChange={(e) =>
-                      handleInstructionChange(idx, e.target.value)
-                    }
+                    onChange={e => handleInstructionChange(idx, e.target.value)}
                     placeholder="Describe this step..."
                   />
-                  <button
-                    type="button"
-                    className="remove-btn"
-                    onClick={() => removeInstruction(idx)}
-                  >
-                    ✕
-                  </button>
+
+                  {formData.instructions.length > 1 && (
+                    <button type="button" className="remove-btn" onClick={() => removeInstruction(idx)}>
+                      ✕
+                    </button>
+                  )}
                 </div>
               ))}
+
               <button type="button" className="add-btn" onClick={addInstruction}>
                 + Add Step
               </button>
@@ -291,6 +261,7 @@ function AddRecipe() {
                 {submitting ? "Publishing..." : "Publish Recipe"}
               </button>
             </div>
+
           </form>
         </div>
       </div>
