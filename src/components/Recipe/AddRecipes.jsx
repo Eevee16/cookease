@@ -5,8 +5,8 @@ import { db, storage } from "../../firebase/config";
 import {
   collection,
   addDoc,
-  updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  updateDoc
 } from "firebase/firestore";
 import {
   ref as storageRef,
@@ -38,12 +38,14 @@ function AddRecipe() {
 
   /* OPTIONS */
   const categoryOptions = [
-    "Breakfast","Lunch","Dinner","Dessert","Snacks","Appetizer","Soup","Salad","Beverage","Side Dish"
+    "Breakfast","Lunch","Dinner","Dessert","Snacks",
+    "Appetizer","Soup","Salad","Beverage","Side Dish"
   ];
 
   const cuisineOptions = [
-    "Filipino","Chinese","Japanese","Korean","Thai","Vietnamese","Indian","Italian",
-    "French","American","Mexican","Spanish","Greek","Middle Eastern","African","Fusion"
+    "Filipino","Chinese","Japanese","Korean","Thai","Vietnamese",
+    "Indian","Italian","French","American","Mexican","Spanish",
+    "Greek","Middle Eastern","African","Fusion"
   ];
 
   const difficultyOptions = ["Easy", "Medium", "Hard"];
@@ -61,12 +63,31 @@ function AddRecipe() {
     instructions: [""]
   });
 
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
   /* INPUT CHANGE */
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  /* IMAGE */
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const compressed = await imageCompression(file, {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1200,
+      useWebWorker: true
+    });
+
+    setImageFile(compressed);
+    setImagePreview(URL.createObjectURL(compressed));
+  };
 
   /* INGREDIENTS */
   const handleIngredientChange = (i, v) => {
@@ -112,6 +133,7 @@ function AddRecipe() {
     e.preventDefault();
     setSubmitting(true);
     setFieldErrors({});
+    setUploadProgress(0);
 
     const cleaned = {
       ...formData,
@@ -133,17 +155,49 @@ function AddRecipe() {
       return;
     }
 
-    await addDoc(collection(db, "recipes"), {
-      ...cleaned,
-      image: "",
-      ownerId: user.uid,
-      ownerName: user.displayName || user.email,
-      rating: 0,
-      status: "pending",
-      createdAt: serverTimestamp()
-    });
+    try {
+      // 1️⃣ Create recipe
+      const recipeRef = await addDoc(collection(db, "recipes"), {
+        ...cleaned,
+        slug: slugify(cleaned.title),
+        imageUrl: "",
+        ownerId: user.uid,
+        ownerName: user.displayName || user.email,
+        rating: 0,
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
 
-    navigate("/");
+      // 2️⃣ Upload image if provided
+      if (imageFile) {
+        const imgRef = storageRef(storage, `recipes/${recipeRef.id}/main.jpg`);
+        const uploadTask = uploadBytesResumable(imgRef, imageFile);
+
+        await new Promise((resolve, reject) => {
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(Math.round(progress));
+            },
+            (error) => reject(error),
+            async () => {
+              const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+              await updateDoc(recipeRef, { imageUrl });
+              resolve();
+            }
+          );
+        });
+      }
+
+      // 3️⃣ Show success feedback and navigate
+      alert("Recipe submitted for approval!");
+      navigate("/");
+
+    } catch (err) {
+      console.error(err);
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -162,8 +216,14 @@ function AddRecipe() {
 
               <div className="form-group">
                 <label>Recipe Title *</label>
-                <input name="title" value={formData.title} onChange={handleChange} />
-                {fieldErrors.title && <small className="field-error">{fieldErrors.title}</small>}
+                <input
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                />
+                {fieldErrors.title && (
+                  <small className="field-error">{fieldErrors.title}</small>
+                )}
               </div>
 
               <div className="form-row">
@@ -173,7 +233,9 @@ function AddRecipe() {
                     <option value="">Select...</option>
                     {categoryOptions.map(c => <option key={c}>{c}</option>)}
                   </select>
-                  {fieldErrors.category && <small className="field-error">{fieldErrors.category}</small>}
+                  {fieldErrors.category && (
+                    <small className="field-error">{fieldErrors.category}</small>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -182,7 +244,9 @@ function AddRecipe() {
                     <option value="">Select...</option>
                     {cuisineOptions.map(c => <option key={c}>{c}</option>)}
                   </select>
-                  {fieldErrors.cuisine && <small className="field-error">{fieldErrors.cuisine}</small>}
+                  {fieldErrors.cuisine && (
+                    <small className="field-error">{fieldErrors.cuisine}</small>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -191,15 +255,39 @@ function AddRecipe() {
                     <option value="">Select...</option>
                     {difficultyOptions.map(d => <option key={d}>{d}</option>)}
                   </select>
-                  {fieldErrors.difficulty && <small className="field-error">{fieldErrors.difficulty}</small>}
+                  {fieldErrors.difficulty && (
+                    <small className="field-error">{fieldErrors.difficulty}</small>
+                  )}
                 </div>
               </div>
+            </div>
+
+            {/* IMAGE */}
+            <div className="form-section">
+              <h3>Recipe Image</h3>
+
+              {imagePreview && (
+                <div className="image-preview">
+                  <img src={imagePreview} alt="Preview" />
+                </div>
+              )}
+
+              <input type="file" accept="image/*" onChange={handleImageChange} />
+
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="upload-progress">
+                  <div
+                    className="progress-bar"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                  <span>{uploadProgress}%</span>
+                </div>
+              )}
             </div>
 
             {/* INGREDIENTS */}
             <div className="form-section">
               <h3>Ingredients *</h3>
-              {fieldErrors.ingredients && <small className="field-error">{fieldErrors.ingredients}</small>}
 
               {formData.ingredients.map((item, idx) => (
                 <div key={idx} className="dynamic-field">
@@ -209,7 +297,11 @@ function AddRecipe() {
                     placeholder={`Ingredient ${idx + 1}`}
                   />
                   {formData.ingredients.length > 1 && (
-                    <button type="button" className="remove-btn" onClick={() => removeIngredient(idx)}>
+                    <button
+                      type="button"
+                      className="remove-btn"
+                      onClick={() => removeIngredient(idx)}
+                    >
                       ✕
                     </button>
                   )}
@@ -224,23 +316,21 @@ function AddRecipe() {
             {/* INSTRUCTIONS */}
             <div className="form-section">
               <h3>Instructions *</h3>
-              {fieldErrors.instructions && <small className="field-error">{fieldErrors.instructions}</small>}
 
               {formData.instructions.map((step, idx) => (
-                <div key={idx} className="instruction-field">
-                  <div className="step-number">
-                    <span className="step-label">Step</span>
-                    <span className="step-count">{idx + 1}</span>
-                  </div>
-
-                  <textarea
+                <div key={idx} className="dynamic-field">
+                  <input
+                    className="instruction-input"
                     value={step}
                     onChange={e => handleInstructionChange(idx, e.target.value)}
-                    placeholder="Describe this step..."
+                    placeholder={`Step ${idx + 1}`}
                   />
-
                   {formData.instructions.length > 1 && (
-                    <button type="button" className="remove-btn" onClick={() => removeInstruction(idx)}>
+                    <button
+                      type="button"
+                      className="remove-btn"
+                      onClick={() => removeInstruction(idx)}
+                    >
                       ✕
                     </button>
                   )}
@@ -254,10 +344,19 @@ function AddRecipe() {
 
             {/* ACTIONS */}
             <div className="form-actions">
-              <button type="button" className="cancel-btn" onClick={() => navigate("/")}>
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={() => navigate("/")}
+              >
                 Cancel
               </button>
-              <button type="submit" className="submit-btn" disabled={submitting}>
+
+              <button
+                type="submit"
+                className="submit-btn"
+                disabled={submitting}
+              >
                 {submitting ? "Publishing..." : "Publish Recipe"}
               </button>
             </div>

@@ -145,11 +145,6 @@ body {
   cursor: pointer;
 }
 
-.logo {
-  font-size: 28px;
-  font-weight: 300;
-  font-family: Alter;
-}
 
 .search-bar {
   flex: 1;

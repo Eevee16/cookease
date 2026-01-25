@@ -3,14 +3,6 @@
     background: #f9fafb;
 }
 
-.add-recipe-header {
-    background: white;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-     gap: 24px;
-}
 .add-recipe-main{
     max-width:  800px;
     margin: 0 auto;
@@ -68,8 +60,7 @@
 }
 
 .form-group input,
-.form-group select, 
-.form-group textarea {
+.form-group select {
     padding: 12px 16px;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -78,92 +69,48 @@
     transition: border-color 0.3s;
 }
 
-.form-group small {
-    font-size: 12px;
-    color: #6b5cf6;
-}
-
 .form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.form-group select:focus {
     outline: none;
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-.form-group small {
-    font-size : 12px;
-    color : #6b7280;
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .form-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
 }
 
 .dynamic-field {
     display: flex;
     gap: 12px;
-    align-items: center; /* center-align the badge with the textarea */
-    position: relative;
+    align-items: center;
 }
 
-.dynamic-field input,
-.dynamic-field textarea {
+.dynamic-field input {
     flex: 1;
     padding: 12px 16px;
     border: 1px solid #d1d5db;
     border-radius: 8px;
     font-size: 14px;
+    font-family: inherit;
 }
 
-/* stacked step badge */
-.step-number {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    min-width: 52px;
-    height: 52px;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-    padding: 6px 8px;
-    color: #374151;
+.instruction-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-.step-label {
-    font-size: 11px;
-    color: #6b7280;
-    line-height: 1;
-    margin-bottom: 2px;
-}
-
-.step-count {
-    font-weight: 700;
-    font-size: 16px;
-    color: #8b5cf6;
-    line-height: 1;
-}
-
-@media (max-width: 480px) {
-  .step-number {
-    width: 44px;
-    height: 44px;
-    font-size: 12px;
-  }
-}
-
-.remove-btn {
-    padding: 12px;
-    background: transparent;
-    border: none;
-    color: #dc2626;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s;
+.instruction-input:focus {
+    outline: none;
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .remove-btn {
@@ -209,7 +156,7 @@
 }
 
 .cancel-btn {
-    background: #ffffff;
+    background-color: #f9fafb;
     color: #374151;
     padding: 14px 24px;
     border: 1px solid #d1d5db;
@@ -218,10 +165,6 @@
     font-weight: 600;
     cursor: pointer;
     transition: background 0.3s;
-}
-
-.cancel-btn{
-    background-color: #f9fafb;
 }
 
 .submit-btn {
@@ -240,88 +183,12 @@
     background: #7c3aed;
 }
 
-.custom-input-wrapper {
-  margin-top: 8px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.custom-input-wrapper input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 2px solid #f97316;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.cancel-custom-btn {
-  background: #fee2e2;
-  color: #dc2626;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.cancel-custom-btn:hover {
-  background: #fecaca;
-}
-
-/* Form improvements */
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 6px;
-}
-
-.form-group select,
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  transition: border-color 0.2s;
-}
-
-.form-group select:focus,
-.form-group input:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #f97316;
-}
-
-.form-group select:disabled {
-  background: #f3f4f6;
-  cursor: not-allowed;
-}
-
-/* Image preview */
-.image-preview-wrapper {
-  margin-top: 12px;
-}
-
 .image-preview {
   max-width: 300px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Upload progress */
 .upload-progress {
   margin-top: 12px;
   background: #f3f4f6;
@@ -350,65 +217,8 @@
   color: #1f2937;
 }
 
-/* Instructions field specific */
-.instruction-field {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 12px;
-  align-items: start;
-}
-
-.step-number {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px;
-  background: #fff7ed;
-  border-radius: 8px;
-  min-width: 60px;
-}
-
-.step-label {
-  font-size: 10px;
-  color: #9ca3af;
-  text-transform: uppercase;
-  font-weight: 600;
-}
-
-.step-count {
-  font-size: 20px;
-  font-weight: 700;
-  color: #f97316;
-}
-
 .field-error {
   color: #dc2626;
   font-size: 12px;
   margin-top: 4px;
-}
-
-.field-hint {
-  color: #6b7280;
-  font-size: 12px;
-  margin-top: 4px;
-}
-
-
-@media (max-width: 768px) {
-  .add-recipe-container {
-    padding: 24px;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions {
-    flex-direction: column;
-  }
-
-  .cancel-btn,
-  .submit-btn {
-    width: 100%;
-  }
 }
