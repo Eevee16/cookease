@@ -1,18 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { db, storage } from "../../firebase/config";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  updateDoc
-} from "firebase/firestore";
-import {
-  ref as storageRef,
-  uploadBytesResumable,
-  getDownloadURL
-} from "firebase/storage";
+import { supabase } from "../../supabaseClient"; // Your supabase client import
 import imageCompression from "browser-image-compression";
 import "../../styles/AddRecipes.css";
 
@@ -31,7 +20,7 @@ function AddRecipe() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user === null) {
+    if (!user) {
       navigate("/login", { state: { from: location } });
     }
   }, [user, navigate, location]);
@@ -65,7 +54,7 @@ function AddRecipe() {
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -133,7 +122,7 @@ function AddRecipe() {
     e.preventDefault();
     setSubmitting(true);
     setFieldErrors({});
-    setUploadProgress(0);
+    setUploading(false);
 
     const cleaned = {
       ...formData,
@@ -156,47 +145,66 @@ function AddRecipe() {
     }
 
     try {
-      // 1️⃣ Create recipe
-      const recipeRef = await addDoc(collection(db, "recipes"), {
-        ...cleaned,
-        slug: slugify(cleaned.title),
-        imageUrl: "",
-        ownerId: user.uid,
-        ownerName: user.displayName || user.email,
-        rating: 0,
-        status: "pending",
-        createdAt: serverTimestamp()
-      });
+      // 1️⃣ Insert recipe row with empty image_url first
+      const { data: insertedRecipe, error: insertError } = await supabase
+        .from("recipes")
+        .insert([{
+          ...cleaned,
+          slug: slugify(cleaned.title),
+          image_url: "",
+          owner_id: user.id,          // Supabase uses user.id (not uid)
+          owner_name: user.user_metadata?.full_name || user.email,
+          rating: 0,
+          status: "pending",
+          created_at: new Date()      // Optional if your DB has default NOW()
+        }])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
 
       // 2️⃣ Upload image if provided
       if (imageFile) {
-        const imgRef = storageRef(storage, `recipes/${recipeRef.id}/main.jpg`);
-        const uploadTask = uploadBytesResumable(imgRef, imageFile);
+        setUploading(true);
 
-        await new Promise((resolve, reject) => {
-          uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setUploadProgress(Math.round(progress));
-            },
-            (error) => reject(error),
-            async () => {
-              const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-              await updateDoc(recipeRef, { imageUrl });
-              resolve();
-            }
-          );
-        });
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `main.${fileExt}`;
+        const filePath = `recipes/${insertedRecipe.id}/${fileName}`;
+
+        // Upload to Supabase Storage (make sure bucket is public or you generate signed URLs)
+        const { error: uploadError } = await supabase.storage
+          .from("recipes") // your bucket name
+          .upload(filePath, imageFile, {
+            cacheControl: "3600",
+            upsert: true
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL for the uploaded image
+        const { data: publicUrlData } = supabase.storage
+          .from("recipes")
+          .getPublicUrl(filePath);
+
+        // Update recipe row with image_url
+        const { error: updateError } = await supabase
+          .from("recipes")
+          .update({ image_url: publicUrlData.publicUrl })
+          .eq("id", insertedRecipe.id);
+
+        if (updateError) throw updateError;
+
+        setUploading(false);
       }
 
-      // 3️⃣ Show success feedback and navigate
       alert("Recipe submitted for approval!");
       navigate("/");
 
     } catch (err) {
       console.error(err);
+      alert("Failed to submit recipe: " + err.message);
       setSubmitting(false);
+      setUploading(false);
     }
   };
 
@@ -274,13 +282,9 @@ function AddRecipe() {
 
               <input type="file" accept="image/*" onChange={handleImageChange} />
 
-              {uploadProgress > 0 && uploadProgress < 100 && (
+              {uploading && (
                 <div className="upload-progress">
-                  <div
-                    className="progress-bar"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                  <span>{uploadProgress}%</span>
+                  <span>Uploading image...</span>
                 </div>
               )}
             </div>

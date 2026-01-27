@@ -1,86 +1,90 @@
-import { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth, db } from '../../firebase/config';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import '../../styles/Auth.css';
+import { useState } from 'react'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
+import { supabase } from '../../supabase'
+import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import '../../styles/Auth.css'
 
 function Login() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotMessage, setForgotMessage] = useState('');
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
+  const [showForgotModal, setShowForgotModal] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotMessage, setForgotMessage] = useState('')
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+    e.preventDefault()
+    setError('')
+    setLoading(true)
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address');
-      setLoading(false);
-      return;
+      setError('Please enter a valid email address')
+      setLoading(false)
+      return
     }
 
     try {
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (error) throw error
+
+      const from = location.state?.from?.pathname || '/'
+      navigate(from, { replace: true })
     } catch (err) {
-      if (err.code === 'auth/user-not-found') setError('No account found with this email');
-      else if (err.code === 'auth/wrong-password') setError('Incorrect password');
-      else if (err.code === 'auth/invalid-email') setError('Invalid email address');
-      else setError('Login failed. Please try again.');
+      if (err.message === 'Invalid login credentials')
+        setError('Incorrect email or password')
+      else if (err.message.includes('Email not confirmed'))
+        setError('Please verify your email before logging in')
+      else
+        setError('Login failed. Please try again.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-
-  // Log password reset in Firestore
-  const logPasswordReset = async (email) => {
-    try {
-      await setDoc(doc(db, 'passwordResets', email), {
-        requestedAt: serverTimestamp(),
-        email: email
-      });
-    } catch (err) {
-      console.error('Failed to log password reset:', err);
-    }
-  };
+  }
 
   const handleForgotPassword = async () => {
-    setForgotMessage('');
+    setForgotMessage('')
+
     if (!forgotEmail) {
-      setForgotMessage('Please enter your email');
-      return;
+      setForgotMessage('Please enter your email')
+      return
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(forgotEmail)) {
-      setForgotMessage('Enter a valid email address');
-      return;
+      setForgotMessage('Enter a valid email address')
+      return
     }
 
     try {
-      await sendPasswordResetEmail(auth, forgotEmail);
-      await logPasswordReset(forgotEmail);
-      setForgotMessage('Password reset email sent! Check your inbox.');
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        forgotEmail,
+        {
+          redirectTo: `${window.location.origin}/reset-password`,
+        }
+      )
+
+      if (error) throw error
+
+      setForgotMessage('Password reset email sent! Check your inbox.')
     } catch (err) {
-      console.error(err);
-      setForgotMessage('Failed to send reset email. Check your email address.');
+      console.error(err)
+      setForgotMessage('Failed to send reset email. Check your email address.')
     }
-  };
+  }
 
   return (
     <div className="auth-page">
@@ -95,14 +99,14 @@ function Login() {
 
           <div className="form-group">
             <label htmlFor="email">Email</label>
-            <input 
-              type="email" 
-              id="email" 
-              name="email" 
-              value={formData.email} 
-              onChange={handleChange} 
-              placeholder="you@example.com" 
-              required 
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="you@example.com"
+              required
             />
           </div>
 
@@ -130,7 +134,9 @@ function Login() {
           </div>
 
           <div className="forgot-password">
-            <button type="button" onClick={() => setShowForgotModal(true)}>Forgot Password?</button>
+            <button type="button" onClick={() => setShowForgotModal(true)}>
+              Forgot Password?
+            </button>
           </div>
 
           <button type="submit" className="auth-btn" disabled={loading}>
@@ -145,26 +151,42 @@ function Login() {
 
       {/* Forgot Password Modal */}
       {showForgotModal && (
-        <div className="forgot-modal-overlay" onClick={() => setShowForgotModal(false)}>
+        <div
+          className="forgot-modal-overlay"
+          onClick={() => setShowForgotModal(false)}
+        >
           <div className="forgot-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Reset Password</h2>
             <p>Enter your email to receive a password reset link</p>
-            {forgotMessage && <div className="auth-error">{forgotMessage}</div>}
+
+            {forgotMessage && (
+              <div className="auth-error">{forgotMessage}</div>
+            )}
+
             <input
               type="email"
               placeholder="your@email.com"
               value={forgotEmail}
               onChange={(e) => setForgotEmail(e.target.value)}
             />
+
             <div className="forgot-buttons">
-              <button onClick={handleForgotPassword} className="auth-btn">Send Reset Link</button>
-              <button onClick={() => setShowForgotModal(false)} className="auth-btn" style={{ background: '#ccc', color: '#333' }}>Cancel</button>
+              <button onClick={handleForgotPassword} className="auth-btn">
+                Send Reset Link
+              </button>
+              <button
+                onClick={() => setShowForgotModal(false)}
+                className="auth-btn"
+                style={{ background: '#ccc', color: '#333' }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export default Login;
+export default Login

@@ -1,13 +1,13 @@
+// src/components/Auth/Signup.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import '../../styles/Auth.css';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth, db } from '../../firebase/config';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../../supabaseClient'; // ✅ single client instance
 
 function Signup() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: ''
   });
@@ -16,27 +16,55 @@ function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [profileImage, setProfileImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
+  // Handle text input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Handle image selection and preview
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Password strength calculator
+  const calculatePasswordStrength = (password) => {
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[@$!%*?&]/.test(password)) score++;
+    return score;
+  };
+
+  const getStrengthLabel = (score) => {
+    if (score <= 2) return 'Weak';
+    if (score <= 4) return 'Medium';
+    return 'Strong';
+  };
+
+  // Form validation
   useEffect(() => {
     const newErrors = {};
 
-    // Name validation
-    if ((formData.firstName && formData.firstName.length < 2) || 
+    if ((formData.firstName && formData.firstName.length < 2) ||
         (formData.lastName && formData.lastName.length < 2)) {
       newErrors.name = 'First and Last name must be at least 2 characters';
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (formData.email && !emailRegex.test(formData.email)) {
       newErrors.email = 'Invalid email address';
     }
 
-    // Password validation
     if (formData.password) {
       const strength = calculatePasswordStrength(formData.password);
       setPasswordStrength(strength);
@@ -52,7 +80,6 @@ function Signup() {
       setPasswordStrength(0);
     }
 
-    // Confirm Password validation
     if (formData.confirmPassword && formData.confirmPassword !== formData.password) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
@@ -60,23 +87,7 @@ function Signup() {
     setErrors(newErrors);
   }, [formData]);
 
-  const calculatePasswordStrength = (password) => {
-    let score = 0;
-    if (password.length >= 6) score += 1;
-    if (password.length >= 8) score += 1;
-    if (/[A-Z]/.test(password)) score += 1;
-    if (/[a-z]/.test(password)) score += 1;
-    if (/\d/.test(password)) score += 1;
-    if (/[@$!%*?&]/.test(password)) score += 1;
-    return score;
-  };
-
-  const getStrengthLabel = (score) => {
-    if (score <= 2) return 'Weak';
-    if (score <= 4) return 'Medium';
-    return 'Strong';
-  };
-
+  // Handle signup
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -87,26 +98,61 @@ function Signup() {
     }
 
     try {
-      const displayName = `${formData.firstName} ${formData.lastName}`;
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      await updateProfile(userCredential.user, { displayName });
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      // ✅ Sign up user
+      const { data: userData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
-        displayName,
-        photoURL: null,
-        createdAt: serverTimestamp(),
-        recipesCount: 0
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login` // redirect after email confirmation
+        }
       });
 
-      alert('Account created successfully!');
-      const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      if (signUpError) throw signUpError;
+
+      const userId = userData.user.id;
+      let photoURL = null;
+
+      // Upload profile image
+      if (profileImage) {
+        const fileExt = profileImage.name.split('.').pop();
+        const fileName = `${userId}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, profileImage, { cacheControl: '3600', upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { publicUrl } = supabase.storage.from('avatars').getPublicUrl(fileName);
+        photoURL = publicUrl;
+      }
+
+      // Insert user profile
+      const { error: profileError } = await supabase.from('profiles').insert([
+        {
+          id: userId,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          photo_url: photoURL
+        }
+      ]);
+
+      if (profileError) throw profileError;
+
+      alert('Account created! Check your email to confirm.');
+      navigate('/', { replace: true });
+
     } catch (err) {
       console.error('Signup error:', err);
-      if (err.code === 'auth/email-already-in-use') setErrors({ email: 'This email is already registered' });
-      else if (err.code === 'auth/invalid-email') setErrors({ email: 'Invalid email address' });
-      else if (err.code === 'auth/weak-password') setErrors({ password: 'Password is too weak' });
-      else setErrors({ general: err.message });
+
+      // Handle rate limit
+      if (err.message && err.message.includes('rate limit')) {
+        setErrors({ general: 'Too many signup attempts. Please wait a minute and try again.' });
+      } else {
+        setErrors({ general: err.message || 'Signup failed' });
+      }
+
     } finally {
       setLoading(false);
     }
@@ -123,7 +169,6 @@ function Signup() {
         <form className="auth-form" onSubmit={handleSubmit}>
           {errors.general && <div className="auth-error">{errors.general}</div>}
 
-          {/* Name inputs side-by-side */}
           <div className="name-group">
             <div className="form-group">
               <label htmlFor="firstName">First Name</label>
@@ -179,12 +224,7 @@ function Signup() {
                 placeholder="At least 6 characters"
                 required
               />
-              <button
-                type="button"
-                className="toggle-btn"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
+              <button type="button" className="toggle-btn" onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
@@ -209,16 +249,17 @@ function Signup() {
                 placeholder="Re-enter your password"
                 required
               />
-              <button
-                type="button"
-                className="toggle-btn"
-                onClick={() => setShowConfirm(!showConfirm)}
-                aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
-              >
+              <button type="button" className="toggle-btn" onClick={() => setShowConfirm(!showConfirm)}>
                 {showConfirm ? 'Hide' : 'Show'}
               </button>
             </div>
             {errors.confirmPassword && <p className="form-error">{errors.confirmPassword}</p>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="profileImage">Profile Image</label>
+            <input type="file" id="profileImage" accept="image/*" onChange={handleImageChange} />
+            {imagePreview && <img src={imagePreview} alt="Preview" className="image-preview" />}
           </div>
 
           <button type="submit" className="auth-btn" disabled={loading}>
