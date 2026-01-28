@@ -1,8 +1,7 @@
 import { useEffect } from "react";
-import { collection, addDoc } from "firebase/firestore";
-import { db } from "../firebase/config"; // adjust path if needed
+import { supabase } from "../supabaseClient"; // adjust path if needed
 
-// Step 1: Your ingredients array
+/* 🔹 Ingredient seed data */
 const ingredientsData = [
   { name: "chicken", category: "meat", image: "/images/ingredients/chicken.jpg" },
   { name: "tomato", category: "vegetable", image: "/images/ingredients/tomato.jpg" },
@@ -11,25 +10,27 @@ const ingredientsData = [
   { name: "salt", category: "spice", image: "/images/ingredients/salt.jpg" },
 ];
 
-// Step 2: Function to add ingredients to Firestore
+/* 🔹 Populate ingredients (Supabase) */
 const populateIngredients = async () => {
-  for (const ing of ingredientsData) {
-    try {
-      const docRef = await addDoc(collection(db, "ingredients"), ing);
-      console.log(`Added: ${ing.name} with ID: ${docRef.id}`);
-    } catch (error) {
-      console.error("Error adding ingredient:", ing.name, error);
-    }
+  const { error } = await supabase
+    .from("ingredients")
+    .upsert(ingredientsData, {
+      onConflict: "name", // prevents duplicates
+    });
+
+  if (error) {
+    console.error("Error populating ingredients:", error);
+  } else {
+    console.log("Ingredients populated successfully");
   }
 };
 
-// Step 3: Call it on component mount
 const PopulateIngredients = () => {
   useEffect(() => {
     populateIngredients();
   }, []);
 
-  return <div>Populating ingredients... Check the console.</div>;
+  return <div>Populating ingredients… Check the console.</div>;
 };
 
 export default PopulateIngredients;

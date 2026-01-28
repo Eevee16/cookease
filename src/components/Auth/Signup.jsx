@@ -1,12 +1,11 @@
 // src/components/Auth/Signup.jsx
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import '../../styles/Auth.css';
-import { supabase } from '../../supabaseClient'; // ✅ single client instance
+import { supabase } from '../../supabaseClient';
 
 function Signup() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: ''
@@ -98,50 +97,70 @@ function Signup() {
     }
 
     try {
-      // ✅ Sign up user
+      // Step 1: Sign up user
       const { data: userData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login` // redirect after email confirmation
+          emailRedirectTo: `${window.location.origin}/login`
         }
       });
 
       if (signUpError) throw signUpError;
 
+      if (!userData.user) {
+        throw new Error('Signup failed - no user returned');
+      }
+
       const userId = userData.user.id;
       let photoURL = null;
 
-      // Upload profile image
+      // Step 2: Upload profile image if provided
       if (profileImage) {
         const fileExt = profileImage.name.split('.').pop();
-        const fileName = `${userId}.${fileExt}`;
+        const fileName = `avatar.${fileExt}`;
+        // FIXED: Use correct path structure {user_id}/{filename}
+        const filePath = `${userId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(fileName, profileImage, { cacheControl: '3600', upsert: true });
+          .upload(filePath, profileImage, { 
+            cacheControl: '3600', 
+            upsert: true 
+          });
 
-        if (uploadError) throw uploadError;
-
-        const { publicUrl } = supabase.storage.from('avatars').getPublicUrl(fileName);
-        photoURL = publicUrl;
+        if (uploadError) {
+          console.error('Avatar upload error:', uploadError);
+          // Don't throw - continue signup even if avatar fails
+        } else {
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          
+          photoURL = urlData.publicUrl;
+        }
       }
 
-      // Insert user profile
+      // Step 3: Insert user profile
       const { error: profileError } = await supabase.from('profiles').insert([
         {
           id: userId,
           first_name: formData.firstName,
           last_name: formData.lastName,
           email: formData.email,
-          photo_url: photoURL
+          photo_url: photoURL,
+          role: 'user' // Add default role
         }
       ]);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw new Error('Account created but profile setup failed. Please try logging in.');
+      }
 
       alert('Account created! Check your email to confirm.');
-      navigate('/', { replace: true });
+      navigate('/login', { replace: true });
 
     } catch (err) {
       console.error('Signup error:', err);
@@ -257,7 +276,7 @@ function Signup() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="profileImage">Profile Image</label>
+            <label htmlFor="profileImage">Profile Image (Optional)</label>
             <input type="file" id="profileImage" accept="image/*" onChange={handleImageChange} />
             {imagePreview && <img src={imagePreview} alt="Preview" className="image-preview" />}
           </div>

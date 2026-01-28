@@ -1,10 +1,9 @@
 import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { AdminProvider } from "./contexts/AdminContext";
-import { ModeratorProvider } from "./contexts/ModeratorContext";
-import { supabase } from "./supabase"; // 👈 ADD THIS
+import { supabase } from "./supabase";
+import { RoleProvider } from "./contexts/RoleContext";
 import Layout from "./components/Layout";
+
 import Popular from "./pages/Popular.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import RecipeDetail from "./pages/RecipeDetail.jsx";
@@ -35,33 +34,30 @@ function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AdminProvider>
-        <ModeratorProvider>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/recipe/:id" element={<RecipeDetail />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/search-ingredients" element={<SearchByIngredients />} />
-              <Route path="/search-course-cuisine" element={<SearchByCourseCuisine />} />
-              <Route path="/moderator" element={<ModeratorDashboard />} />
-              <Route path="/popular" element={<Popular />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route
-                path="/add-recipe"
-                element={
-                  <ProtectedRoute>
-                    <AddRecipe />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </Layout>
-        </ModeratorProvider>
-      </AdminProvider>
-    </AuthProvider>
+    <RoleProvider>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/recipe/:id" element={<RecipeDetail />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/search-ingredients" element={<SearchByIngredients />} />
+          <Route path="/search-course-cuisine" element={<SearchByCourseCuisine />} />
+          <Route path="/moderator" element={<ModeratorDashboard />} />
+          <Route path="/popular" element={<Popular />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          <Route
+            path="/add-recipe"
+            element={
+              <ProtectedRoute>
+                <AddRecipe />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Layout>
+    </RoleProvider>
   );
 }
 

@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { supabase } from '../supabaseClient'; // adjust path if needed
 
 const ModeratorContext = createContext();
 
@@ -29,21 +28,27 @@ export function ModeratorProvider({ children }) {
       }
 
       try {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          const data = userDoc.data();
+        console.log('Checking moderator/admin status for user:', user.id);
+
+        const { data, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
           const role = data.role;
-          
           setIsAdmin(role === 'admin');
           setIsModerator(role === 'moderator' || role === 'admin');
+          console.log('User role:', role);
         } else {
           setIsModerator(false);
           setIsAdmin(false);
         }
-      } catch (error) {
-        console.error('Error checking moderator status:', error);
+      } catch (err) {
+        console.error('Error checking moderator status:', err);
         setIsModerator(false);
         setIsAdmin(false);
       } finally {
@@ -57,7 +62,7 @@ export function ModeratorProvider({ children }) {
   const value = {
     isModerator,
     isAdmin,
-    loading
+    loading,
   };
 
   return (

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
-import { supabase } from "../../supabaseClient"; // Your supabase client import
+import { useRoles } from "../../contexts/RoleContext";
+import { supabase } from "../../supabaseClient";
 import imageCompression from "browser-image-compression";
 import "../../styles/AddRecipes.css";
 
@@ -17,13 +17,13 @@ const slugify = (text = "") =>
 function AddRecipe() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useRoles();
 
   useEffect(() => {
-    if (!user) {
+    if (!loading && !user) {
       navigate("/login", { state: { from: location } });
     }
-  }, [user, navigate, location]);
+  }, [user, loading, navigate, location]);
 
   /* OPTIONS */
   const categoryOptions = [
@@ -55,9 +55,21 @@ function AddRecipe() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [uploading, setUploading] = useState(false);
-
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="add-recipe-page">
+        <div className="add-recipe-main">
+          <div className="add-recipe-container">
+            <p>Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* INPUT CHANGE */
   const handleChange = (e) =>
@@ -65,7 +77,7 @@ function AddRecipe() {
 
   /* IMAGE */
   const handleImageChange = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     const compressed = await imageCompression(file, {
@@ -122,7 +134,6 @@ function AddRecipe() {
     e.preventDefault();
     setSubmitting(true);
     setFieldErrors({});
-    setUploading(false);
 
     const cleaned = {
       ...formData,
@@ -145,66 +156,63 @@ function AddRecipe() {
     }
 
     try {
-      // 1️⃣ Insert recipe row with empty image_url first
-      const { data: insertedRecipe, error: insertError } = await supabase
+      /* 1️⃣ Insert recipe */
+      const { data: recipe, error: insertError } = await supabase
         .from("recipes")
         .insert([{
           ...cleaned,
-          slug: slugify(cleaned.title),
+          slug: `${slugify(cleaned.title)}-${crypto.randomUUID().slice(0, 6)}`,
           image_url: "",
-          owner_id: user.id,          // Supabase uses user.id (not uid)
+          owner_id: user.id,
           owner_name: user.user_metadata?.full_name || user.email,
           rating: 0,
-          status: "pending",
-          created_at: new Date()      // Optional if your DB has default NOW()
+          status: "pending"
         }])
         .select()
         .single();
 
       if (insertError) throw insertError;
 
-      // 2️⃣ Upload image if provided
+      /* 2️⃣ Upload image */
       if (imageFile) {
         setUploading(true);
 
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `main.${fileExt}`;
-        const filePath = `recipes/${insertedRecipe.id}/${fileName}`;
+        try {
+          const ext = imageFile.name.split(".").pop();
+          const fileName = `main.${ext}`;
+          const filePath = `${recipe.id}/${fileName}`;
 
-        // Upload to Supabase Storage (make sure bucket is public or you generate signed URLs)
-        const { error: uploadError } = await supabase.storage
-          .from("recipes") // your bucket name
-          .upload(filePath, imageFile, {
-            cacheControl: "3600",
-            upsert: true
-          });
+          const { error: uploadError } = await supabase.storage
+            .from("recipes")
+            .upload(filePath, imageFile, {
+              cacheControl: "3600",
+              upsert: true
+            });
 
-        if (uploadError) throw uploadError;
+          if (uploadError) throw uploadError;
 
-        // Get public URL for the uploaded image
-        const { data: publicUrlData } = supabase.storage
-          .from("recipes")
-          .getPublicUrl(filePath);
+          const { data } = supabase.storage
+            .from("recipes")
+            .getPublicUrl(filePath);
 
-        // Update recipe row with image_url
-        const { error: updateError } = await supabase
-          .from("recipes")
-          .update({ image_url: publicUrlData.publicUrl })
-          .eq("id", insertedRecipe.id);
+          const { error: updateError } = await supabase
+            .from("recipes")
+            .update({ image_url: data.publicUrl })
+            .eq("id", recipe.id);
 
-        if (updateError) throw updateError;
-
-        setUploading(false);
+          if (updateError) throw updateError;
+        } finally {
+          setUploading(false);
+        }
       }
 
       alert("Recipe submitted for approval!");
       navigate("/");
-
     } catch (err) {
       console.error(err);
       alert("Failed to submit recipe: " + err.message);
+    } finally {
       setSubmitting(false);
-      setUploading(false);
     }
   };
 
@@ -217,155 +225,232 @@ function AddRecipe() {
           <p className="page-subtitle">Share your favorite dish with others</p>
 
           <form className="recipe-form" onSubmit={handleSubmit}>
-
-            {/* BASIC INFO */}
+            
+            {/* Recipe Image */}
             <div className="form-section">
-              <h3>Basic Information</h3>
-
-              <div className="form-group">
-                <label>Recipe Title *</label>
+              <h2>Recipe Image</h2>
+              <div className="image-upload">
                 <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  id="recipe-image"
+                />
+                <label htmlFor="recipe-image" className="image-upload-label">
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Preview" className="image-preview" />
+                  ) : (
+                    <div className="upload-placeholder">
+                      <span>📷</span>
+                      <p>Click to upload image</p>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {/* Basic Info */}
+            <div className="form-section">
+              <h2>Basic Information</h2>
+              
+              <div className="form-group">
+                <label htmlFor="title">Recipe Title *</label>
+                <input
+                  type="text"
+                  id="title"
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
+                  placeholder="e.g., Chicken Adobo"
+                  required
                 />
-                {fieldErrors.title && (
-                  <small className="field-error">{fieldErrors.title}</small>
-                )}
+                {fieldErrors.title && <span className="error">{fieldErrors.title}</span>}
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Category *</label>
-                  <select name="category" value={formData.category} onChange={handleChange}>
-                    <option value="">Select...</option>
-                    {categoryOptions.map(c => <option key={c}>{c}</option>)}
+                  <label htmlFor="category">Category *</label>
+                  <select
+                    id="category"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select category</option>
+                    {categoryOptions.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
                   </select>
-                  {fieldErrors.category && (
-                    <small className="field-error">{fieldErrors.category}</small>
-                  )}
+                  {fieldErrors.category && <span className="error">{fieldErrors.category}</span>}
                 </div>
 
                 <div className="form-group">
-                  <label>Cuisine *</label>
-                  <select name="cuisine" value={formData.cuisine} onChange={handleChange}>
-                    <option value="">Select...</option>
-                    {cuisineOptions.map(c => <option key={c}>{c}</option>)}
+                  <label htmlFor="cuisine">Cuisine *</label>
+                  <select
+                    id="cuisine"
+                    name="cuisine"
+                    value={formData.cuisine}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select cuisine</option>
+                    {cuisineOptions.map(cui => (
+                      <option key={cui} value={cui}>{cui}</option>
+                    ))}
                   </select>
-                  {fieldErrors.cuisine && (
-                    <small className="field-error">{fieldErrors.cuisine}</small>
-                  )}
+                  {fieldErrors.cuisine && <span className="error">{fieldErrors.cuisine}</span>}
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="difficulty">Difficulty *</label>
+                  <select
+                    id="difficulty"
+                    name="difficulty"
+                    value={formData.difficulty}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select difficulty</option>
+                    {difficultyOptions.map(diff => (
+                      <option key={diff} value={diff}>{diff}</option>
+                    ))}
+                  </select>
+                  {fieldErrors.difficulty && <span className="error">{fieldErrors.difficulty}</span>}
                 </div>
 
                 <div className="form-group">
-                  <label>Difficulty *</label>
-                  <select name="difficulty" value={formData.difficulty} onChange={handleChange}>
-                    <option value="">Select...</option>
-                    {difficultyOptions.map(d => <option key={d}>{d}</option>)}
-                  </select>
-                  {fieldErrors.difficulty && (
-                    <small className="field-error">{fieldErrors.difficulty}</small>
-                  )}
+                  <label htmlFor="servings">Servings</label>
+                  <input
+                    type="number"
+                    id="servings"
+                    name="servings"
+                    value={formData.servings}
+                    onChange={handleChange}
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="prepTime">Prep Time (minutes)</label>
+                  <input
+                    type="number"
+                    id="prepTime"
+                    name="prepTime"
+                    value={formData.prepTime}
+                    onChange={handleChange}
+                    placeholder="e.g., 15"
+                    min="0"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="cookTime">Cook Time (minutes)</label>
+                  <input
+                    type="number"
+                    id="cookTime"
+                    name="cookTime"
+                    value={formData.cookTime}
+                    onChange={handleChange}
+                    placeholder="e.g., 30"
+                    min="0"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* IMAGE */}
+            {/* Ingredients */}
             <div className="form-section">
-              <h3>Recipe Image</h3>
-
-              {imagePreview && (
-                <div className="image-preview">
-                  <img src={imagePreview} alt="Preview" />
-                </div>
-              )}
-
-              <input type="file" accept="image/*" onChange={handleImageChange} />
-
-              {uploading && (
-                <div className="upload-progress">
-                  <span>Uploading image...</span>
-                </div>
-              )}
-            </div>
-
-            {/* INGREDIENTS */}
-            <div className="form-section">
-              <h3>Ingredients *</h3>
-
-              {formData.ingredients.map((item, idx) => (
-                <div key={idx} className="dynamic-field">
+              <h2>Ingredients *</h2>
+              {fieldErrors.ingredients && <span className="error">{fieldErrors.ingredients}</span>}
+              
+              {formData.ingredients.map((ingredient, index) => (
+                <div key={index} className="dynamic-field">
                   <input
-                    value={item}
-                    onChange={e => handleIngredientChange(idx, e.target.value)}
-                    placeholder={`Ingredient ${idx + 1}`}
+                    type="text"
+                    value={ingredient}
+                    onChange={(e) => handleIngredientChange(index, e.target.value)}
+                    placeholder={`Ingredient ${index + 1}`}
                   />
-                  {formData.ingredients.length > 1 && (
-                    <button
-                      type="button"
-                      className="remove-btn"
-                      onClick={() => removeIngredient(idx)}
-                    >
-                      ✕
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeIngredient(index)}
+                    className="remove-btn"
+                    disabled={formData.ingredients.length === 1}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
-
-              <button type="button" className="add-btn" onClick={addIngredient}>
+              
+              <button
+                type="button"
+                onClick={addIngredient}
+                className="add-btn"
+              >
                 + Add Ingredient
               </button>
             </div>
 
-            {/* INSTRUCTIONS */}
+            {/* Instructions */}
             <div className="form-section">
-              <h3>Instructions *</h3>
-
-              {formData.instructions.map((step, idx) => (
-                <div key={idx} className="dynamic-field">
-                  <input
-                    className="instruction-input"
-                    value={step}
-                    onChange={e => handleInstructionChange(idx, e.target.value)}
-                    placeholder={`Step ${idx + 1}`}
+              <h2>Instructions *</h2>
+              {fieldErrors.instructions && <span className="error">{fieldErrors.instructions}</span>}
+              
+              {formData.instructions.map((instruction, index) => (
+                <div key={index} className="dynamic-field">
+                  <span className="step-number">{index + 1}.</span>
+                  <textarea
+                    value={instruction}
+                    onChange={(e) => handleInstructionChange(index, e.target.value)}
+                    placeholder={`Step ${index + 1}`}
+                    rows="3"
                   />
-                  {formData.instructions.length > 1 && (
-                    <button
-                      type="button"
-                      className="remove-btn"
-                      onClick={() => removeInstruction(idx)}
-                    >
-                      ✕
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeInstruction(index)}
+                    className="remove-btn"
+                    disabled={formData.instructions.length === 1}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
-
-              <button type="button" className="add-btn" onClick={addInstruction}>
+              
+              <button
+                type="button"
+                onClick={addInstruction}
+                className="add-btn"
+              >
                 + Add Step
               </button>
             </div>
 
-            {/* ACTIONS */}
+            {/* Submit */}
             <div className="form-actions">
               <button
                 type="button"
-                className="cancel-btn"
                 onClick={() => navigate("/")}
+                className="cancel-btn"
+                disabled={submitting || uploading}
               >
                 Cancel
               </button>
-
               <button
                 type="submit"
                 className="submit-btn"
-                disabled={submitting}
+                disabled={submitting || uploading}
               >
-                {submitting ? "Publishing..." : "Publish Recipe"}
+                {submitting ? "Submitting..." : uploading ? "Uploading..." : "Submit Recipe"}
               </button>
             </div>
 
           </form>
+
         </div>
       </div>
     </div>

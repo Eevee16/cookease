@@ -1,34 +1,39 @@
-import { useParams, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { recipes as localRecipes } from '../components/data/recipes.js';
-import { db } from '../firebase/config';
-import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
-import '../styles/RecipeDetail.css';
+import { useParams, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { recipes as localRecipes } from "../components/data/recipes.js";
+import { supabase } from "../supabase";
+import "../styles/RecipeDetail.css";
 
 function RecipeDetail() {
   const { id } = useParams();
   const localMatch = localRecipes.find((r) => r.id === Number(id));
-  
+
   const [recipe, setRecipe] = useState(localMatch || null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('ingredients');
+  const [activeTab, setActiveTab] = useState("ingredients");
   const [checkedIngredients, setCheckedIngredients] = useState({});
 
+  // Fetch recipe from Supabase if not local
   useEffect(() => {
     if (localMatch) return;
 
     const fetchRecipe = async () => {
       setLoading(true);
       try {
-        const docRef = doc(db, 'recipes', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setRecipe({ id: docSnap.id, ...docSnap.data() });
-        } else {
+        const { data, error } = await supabase
+          .from("recipes")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching recipe:", error);
           setRecipe(null);
+        } else {
+          setRecipe(data);
         }
       } catch (err) {
-        console.error('Error fetching recipe:', err);
+        console.error("Error fetching recipe:", err);
         setRecipe(null);
       } finally {
         setLoading(false);
@@ -38,28 +43,25 @@ function RecipeDetail() {
     fetchRecipe();
   }, [id, localMatch]);
 
+  // Increment views safely
   useEffect(() => {
-    // Only increment for Firebase recipes, not local ones
     if (localMatch) return;
-  
+
     const incrementViews = async () => {
       try {
-        const recipeRef = doc(db, 'recipes', id);
-        await updateDoc(recipeRef, {
-          views: increment(1)
-        });
-      } catch (error) {
-        console.error('Error incrementing views:', error);
+        await supabase.rpc("increment_recipe_views", { recipe_id: id });
+      } catch (err) {
+        console.error("Error incrementing views:", err);
       }
     };
-  
+
     incrementViews();
   }, [id, localMatch]);
 
   const toggleIngredient = (index) => {
-    setCheckedIngredients(prev => ({
+    setCheckedIngredients((prev) => ({
       ...prev,
-      [index]: !prev[index]
+      [index]: !prev[index],
     }));
   };
 
@@ -80,19 +82,25 @@ function RecipeDetail() {
         <div className="recipe-not-found">
           <h2>Recipe Not Found</h2>
           <p>Sorry, we couldn't find that recipe.</p>
-          <Link to="/" className="back-btn-link">← Back to Home</Link>
+          <Link to="/" className="back-btn-link">
+            ← Back to Home
+          </Link>
         </div>
       </div>
     );
   }
 
-  const ingredients = Array.isArray(recipe.ingredients) 
-    ? recipe.ingredients 
-    : (recipe.ingredients ? [recipe.ingredients] : []);
-  
-  const instructions = Array.isArray(recipe.instructions) 
-    ? recipe.instructions 
-    : (recipe.instructions ? [recipe.instructions] : []);
+  const ingredients = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients
+    : recipe.ingredients
+    ? [recipe.ingredients]
+    : [];
+
+  const instructions = Array.isArray(recipe.instructions)
+    ? recipe.instructions
+    : recipe.instructions
+    ? [recipe.instructions]
+    : [];
 
   const rating = recipe.rating || 0;
   const fullStars = Math.floor(rating);
@@ -130,23 +138,24 @@ function RecipeDetail() {
 
           <div className="hero-content">
             <div className="recipe-category">
-              {recipe.cuisine || 'Filipino'} • {recipe.category || 'Main'}
+              {recipe.cuisine || "Filipino"} • {recipe.category || "Main"}
             </div>
-            
+
             <h1 className="detail-title">{recipe.title}</h1>
-            
+
             <div className="author-info">
               <div className="author-avatar">
-                {recipe.ownerName ? recipe.ownerName[0].toUpperCase() : 'U'}
+                {recipe.ownerName ? recipe.ownerName[0].toUpperCase() : "U"}
               </div>
               <div className="author-details">
                 <p className="author-label">Recipe by</p>
-                <p className="author-name">{recipe.ownerName || 'Anonymous'}</p>
+                <p className="author-name">{recipe.ownerName || "Anonymous"}</p>
               </div>
             </div>
 
             <p className="recipe-description">
-              {recipe.description || 'A delicious recipe that you\'ll love to make and share with family and friends.'}
+              {recipe.description ||
+                "A delicious recipe that you'll love to make and share with family and friends."}
             </p>
 
             {/* Info Cards */}
@@ -163,7 +172,7 @@ function RecipeDetail() {
                 <span className="info-icon">⏱</span>
                 <div className="info-content">
                   <span className="info-label">Prep Time</span>
-                  <span className="info-value">{recipe.prepTime || '15 min'}</span>
+                  <span className="info-value">{recipe.prepTime || "15 min"}</span>
                 </div>
               </div>
 
@@ -171,7 +180,7 @@ function RecipeDetail() {
                 <span className="info-icon">👨‍🍳</span>
                 <div className="info-content">
                   <span className="info-label">Cook Time</span>
-                  <span className="info-value">{recipe.cookTime || '30 min'}</span>
+                  <span className="info-value">{recipe.cookTime || "30 min"}</span>
                 </div>
               </div>
 
@@ -179,7 +188,7 @@ function RecipeDetail() {
                 <span className="info-icon">🔥</span>
                 <div className="info-content">
                   <span className="info-label">Difficulty</span>
-                  <span className="info-value">{recipe.difficulty || 'Medium'}</span>
+                  <span className="info-value">{recipe.difficulty || "Medium"}</span>
                 </div>
               </div>
             </div>
@@ -194,15 +203,15 @@ function RecipeDetail() {
       {/* Tab Navigation */}
       <div className="tab-navigation">
         <div className="tab-container">
-          <button 
-            className={`tab-btn ${activeTab === 'ingredients' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ingredients')}
+          <button
+            className={`tab-btn ${activeTab === "ingredients" ? "active" : ""}`}
+            onClick={() => setActiveTab("ingredients")}
           >
             Ingredients
           </button>
-          <button 
-            className={`tab-btn ${activeTab === 'directions' ? 'active' : ''}`}
-            onClick={() => setActiveTab('directions')}
+          <button
+            className={`tab-btn ${activeTab === "directions" ? "active" : ""}`}
+            onClick={() => setActiveTab("directions")}
           >
             Directions
           </button>
@@ -211,16 +220,18 @@ function RecipeDetail() {
 
       {/* Content Section */}
       <div className="detail-main">
-        {activeTab === 'ingredients' && (
+        {activeTab === "ingredients" && (
           <div className="content-card">
             <h2 className="section-title">What You'll Need</h2>
             <div className="ingredients-list">
               {ingredients.map((ingredient, index) => (
-                <label 
-                  key={index} 
-                  className={`ingredient-item ${checkedIngredients[index] ? 'checked' : ''}`}
+                <label
+                  key={index}
+                  className={`ingredient-item ${
+                    checkedIngredients[index] ? "checked" : ""
+                  }`}
                 >
-                  <input 
+                  <input
                     type="checkbox"
                     checked={checkedIngredients[index] || false}
                     onChange={() => toggleIngredient(index)}
@@ -232,7 +243,7 @@ function RecipeDetail() {
           </div>
         )}
 
-        {activeTab === 'directions' && (
+        {activeTab === "directions" && (
           <div className="content-card">
             <h2 className="section-title">How to Make It</h2>
             <div className="instructions-list">

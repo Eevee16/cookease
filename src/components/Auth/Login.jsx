@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
-import { supabase } from '../../supabase'
+import { supabase } from '../../supabaseClient' // Fixed import path
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import '../../styles/Auth.css'
 
@@ -145,7 +145,7 @@ function Login() {
         </form>
 
         <div className="auth-footer">
-          <p>Don't have an account? <Link to="/signup"> Sign up</Link></p>
+          <p>Don't have an account? <Link to="/signup">Sign up</Link></p>
         </div>
       </div>
 

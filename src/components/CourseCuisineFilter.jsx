@@ -1,50 +1,67 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
-function CourseCuisineFilter({ recipes, onFilteredRecipes }) {
-  const [selectedCourse, setSelectedCourse] = useState('');
-  const [selectedCuisine, setSelectedCuisine] = useState('');
+function CourseCuisineFilter({ recipes = [], onFilteredRecipes }) {
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCuisine, setSelectedCuisine] = useState("");
 
-  const [allCourses, setAllCourses] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
   const [allCuisines, setAllCuisines] = useState([]);
 
+  /* Build filter options safely */
   useEffect(() => {
-    const coursesSet = new Set();
-    const cuisinesSet = new Set();
+    if (!Array.isArray(recipes)) return;
 
-    recipes.forEach(r => {
-      if (r.course) coursesSet.add(r.course);
-      if (r.cuisine) cuisinesSet.add(r.cuisine);
-    });
+    const categorySet = new Set();
+    const cuisineSet = new Set();
 
-    setAllCourses(Array.from(coursesSet).sort());
-    setAllCuisines(Array.from(cuisinesSet).sort());
+    for (const r of recipes) {
+      if (r?.category) categorySet.add(r.category);
+      if (r?.cuisine) cuisineSet.add(r.cuisine);
+    }
+
+    setAllCategories([...categorySet].sort());
+    setAllCuisines([...cuisineSet].sort());
   }, [recipes]);
 
-  // Filter recipes whenever selection changes
+  /* Apply filters */
   useEffect(() => {
+    if (typeof onFilteredRecipes !== "function") return;
+
     let filtered = [...recipes];
 
-    if (selectedCourse) {
-      filtered = filtered.filter(r => r.course === selectedCourse);
+    if (selectedCategory) {
+      filtered = filtered.filter(
+        (r) => r?.category === selectedCategory
+      );
     }
+
     if (selectedCuisine) {
-      filtered = filtered.filter(r => r.cuisine === selectedCuisine);
+      filtered = filtered.filter(
+        (r) => r?.cuisine === selectedCuisine
+      );
     }
 
     onFilteredRecipes(filtered);
-  }, [selectedCourse, selectedCuisine, recipes, onFilteredRecipes]);
+  }, [
+    selectedCategory,
+    selectedCuisine,
+    recipes,
+    onFilteredRecipes
+  ]);
 
   return (
     <div className="course-cuisine-filter">
       <div className="filter-group">
-        <label>Course:</label>
+        <label>Category:</label>
         <select
-          value={selectedCourse}
-          onChange={(e) => setSelectedCourse(e.target.value)}
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
         >
           <option value="">All</option>
-          {allCourses.map(course => (
-            <option key={course} value={course}>{course}</option>
+          {allCategories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
           ))}
         </select>
       </div>
@@ -56,8 +73,10 @@ function CourseCuisineFilter({ recipes, onFilteredRecipes }) {
           onChange={(e) => setSelectedCuisine(e.target.value)}
         >
           <option value="">All</option>
-          {allCuisines.map(cuisine => (
-            <option key={cuisine} value={cuisine}>{cuisine}</option>
+          {allCuisines.map((cuisine) => (
+            <option key={cuisine} value={cuisine}>
+              {cuisine}
+            </option>
           ))}
         </select>
       </div>

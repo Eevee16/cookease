@@ -1,23 +1,36 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase/config";
 import { Link } from 'react-router-dom';
+import { supabase } from '../supabase';
 import "../styles/SearchByCourseCuisine.css";
 
 function SearchByCourseCuisine() {
   const [recipes, setRecipes] = useState([]);
   const [courseFilter, setCourseFilter] = useState('');
   const [cuisineFilter, setCuisineFilter] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchRecipes = async () => {
-      const snapshot = await getDocs(collection(db, "recipes"));
-      const allRecipes = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setRecipes(allRecipes);
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('recipes')
+          .select('*');
+
+        if (error) {
+          console.error('Error fetching recipes:', error);
+          setRecipes([]);
+        } else {
+          setRecipes(data || []);
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        setRecipes([]);
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchRecipes();
   }, []);
 
@@ -27,6 +40,10 @@ function SearchByCourseCuisine() {
     const cuisineMatch = cuisineFilter ? recipe.cuisine === cuisineFilter : true;
     return courseMatch && cuisineMatch;
   });
+
+  if (loading) {
+    return <div className="search-course-cuisine-page"><p>Loading recipes...</p></div>;
+  }
 
   return (
     <div className="search-course-cuisine-page">

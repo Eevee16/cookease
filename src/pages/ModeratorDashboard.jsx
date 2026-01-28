@@ -1,138 +1,132 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useModerator } from '../contexts/ModeratorContext';
-import { useAuth } from '../contexts/AuthContext';
-import { db } from '../firebase/config';
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy,
-  serverTimestamp,
-} from 'firebase/firestore';
-import '../styles/ModeratorDashboard.css';
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useRoles } from "../contexts/RoleContext";
+import { supabase } from "../supabase";
+import "../styles/ModeratorDashboard.css";
 
 function ModeratorDashboard() {
-  const { isModerator, loading: moderatorLoading } = useModerator();
-  const { user } = useAuth();
+  const { isModerator, userData, loading: roleLoading } = useRoles();
   const navigate = useNavigate();
 
   const [pendingRecipes, setPendingRecipes] = useState([]);
   const [approvedRecipes, setApprovedRecipes] = useState([]);
   const [rejectedRecipes, setRejectedRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState("pending");
   const [selectedRecipe, setSelectedRecipe] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectionReason, setRejectionReason] = useState("");
 
+  // Redirect if not moderator
   useEffect(() => {
-    if (!moderatorLoading && !isModerator) {
-      alert('Access denied. Moderators only.');
-      navigate('/');
+    if (!roleLoading && !isModerator) {
+      alert("Access denied. Moderators only.");
+      navigate("/");
     }
-  }, [isModerator, moderatorLoading, navigate]);
+  }, [isModerator, roleLoading, navigate]);
 
+  // Fetch recipes
   useEffect(() => {
-    if (isModerator) {
-      fetchRecipes();
-    }
+    if (isModerator) fetchRecipes();
   }, [isModerator]);
 
   const fetchRecipes = async () => {
     setLoading(true);
-
     try {
-      const snapshot = await getDocs(
-        query(collection(db, 'recipes'), orderBy('createdAt', 'desc'))
-      );
+      const { data: allRecipes, error } = await supabase
+        .from("recipes")
+        .select("*")
+        .order("createdAt", { ascending: false });
 
-      const allRecipes = snapshot.docs.map(docSnap => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
+      if (error) throw error;
 
-      const pending = allRecipes.filter(r => !r.status || r.status === 'pending');
-      const approved = allRecipes.filter(r => r.status === 'approved');
-      const rejected = allRecipes.filter(r => r.status === 'rejected');
-
-      setPendingRecipes(pending);
-      setApprovedRecipes(approved);
-      setRejectedRecipes(rejected);
-    } catch (error) {
-      console.error('Error fetching recipes:', error);
-      alert('Failed to load recipes');
+      setPendingRecipes(allRecipes.filter(r => !r.status || r.status === "pending"));
+      setApprovedRecipes(allRecipes.filter(r => r.status === "approved"));
+      setRejectedRecipes(allRecipes.filter(r => r.status === "rejected"));
+    } catch (err) {
+      console.error("Error fetching recipes:", err);
+      alert("Failed to load recipes");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ APPROVE / RE-APPROVE RECIPE
+  // Approve recipe
   const handleApprove = async (recipeId) => {
-    if (!user) {
-      alert('You must be logged in to approve recipes');
+    if (!userData) {
+      alert("You must be logged in to approve recipes");
       return;
     }
 
     try {
-      await updateDoc(doc(db, 'recipes', recipeId), {
-        status: 'approved',
-        reviewedBy: user.uid,
-        reviewedAt: serverTimestamp(),
-        rejectionReason: '',
-      });
+      const { error } = await supabase
+        .from("recipes")
+        .update({
+          status: "approved",
+          reviewedBy: userData.id,
+          reviewedAt: new Date().toISOString(),
+          rejectionReason: "",
+        })
+        .eq("id", recipeId);
 
-      alert('Recipe approved');
+      if (error) throw error;
+
+      alert("Recipe approved");
       fetchRecipes();
-    } catch (error) {
-      console.error('Error approving recipe:', error);
-      alert('Failed to approve recipe');
+    } catch (err) {
+      console.error("Error approving recipe:", err);
+      alert("Failed to approve recipe");
     }
   };
 
-  const handleReject = (recipeId) => {
-    setSelectedRecipe(recipeId);
-  };
+  // Reject recipe
+  const handleReject = (recipeId) => setSelectedRecipe(recipeId);
 
   const confirmReject = async () => {
     if (!rejectionReason.trim()) {
-      alert('Please provide a reason for rejection');
+      alert("Please provide a reason for rejection");
       return;
     }
 
     try {
-      await updateDoc(doc(db, 'recipes', selectedRecipe), {
-        status: 'rejected ',
-        reviewedBy: user.uid,
-        reviewedAt: serverTimestamp(),
-        rejectionReason: rejectionReason.trim(),
-      });
-      alert('Recipe rejected');
+      const { error } = await supabase
+        .from("recipes")
+        .update({
+          status: "rejected",
+          reviewedBy: userData.id,
+          reviewedAt: new Date().toISOString(),
+          rejectionReason: rejectionReason.trim(),
+        })
+        .eq("id", selectedRecipe);
+
+      if (error) throw error;
+
+      alert("Recipe rejected");
       setSelectedRecipe(null);
-      setRejectionReason('');
+      setRejectionReason("");
       fetchRecipes();
-    } catch (error) {
-      console.error('Error rejecting recipe:', error);
-      alert('Failed to reject recipe');
+    } catch (err) {
+      console.error("Error rejecting recipe:", err);
+      alert("Failed to reject recipe");
     }
   };
 
+  // Delete recipe
   const handleDelete = async (recipeId) => {
-    if (!window.confirm('Permanently delete this recipe?')) return;
+    if (!window.confirm("Permanently delete this recipe?")) return;
 
     try {
-      await deleteDoc(doc(db, 'recipes', recipeId));
-      alert('Recipe deleted');
+      const { error } = await supabase.from("recipes").delete().eq("id", recipeId);
+      if (error) throw error;
+
+      alert("Recipe deleted");
       fetchRecipes();
-    } catch (error) {
-      console.error('Error deleting recipe:', error);
-      alert('Failed to delete recipe');
+    } catch (err) {
+      console.error("Error deleting recipe:", err);
+      alert("Failed to delete recipe");
     }
   };
 
-  if (moderatorLoading || loading) {
+  if (roleLoading || loading) {
     return (
       <div className="moderator-dashboard">
         <div className="loading-container">
@@ -146,9 +140,9 @@ function ModeratorDashboard() {
   if (!isModerator) return null;
 
   const currentRecipes =
-    activeTab === 'pending'
+    activeTab === "pending"
       ? pendingRecipes
-      : activeTab === 'approved'
+      : activeTab === "approved"
       ? approvedRecipes
       : rejectedRecipes;
 
@@ -178,10 +172,10 @@ function ModeratorDashboard() {
         </div>
 
         <div className="moderator-tabs">
-          {['pending', 'approved', 'rejected'].map(tab => (
+          {["pending", "approved", "rejected"].map(tab => (
             <button
               key={tab}
-              className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+              className={`tab-btn ${activeTab === tab ? "active" : ""}`}
               onClick={() => setActiveTab(tab)}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -203,7 +197,7 @@ function ModeratorDashboard() {
                     <th>Title</th>
                     <th>Owner</th>
                     <th>Submitted</th>
-                    {activeTab === 'rejected' && <th>Reason</th>}
+                    {activeTab === "rejected" && <th>Reason</th>}
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -212,27 +206,23 @@ function ModeratorDashboard() {
                     <tr key={recipe.id}>
                       <td>
                         <img
-                          src={recipe.image || 'https://via.placeholder.com/100'}
+                          src={recipe.image || "https://via.placeholder.com/100"}
                           alt={recipe.title}
                           className="recipe-thumbnail"
                         />
                       </td>
                       <td>{recipe.title}</td>
-                      <td>{recipe.ownerName || 'Unknown'}</td>
-                      <td>
-                        {recipe.createdAt?.toDate
-                          ? recipe.createdAt.toDate().toLocaleDateString()
-                          : 'N/A'}
-                      </td>
-                      {activeTab === 'rejected' && (
-                        <td>{recipe.rejectionReason || 'No reason provided'}</td>
+                      <td>{recipe.ownerName || "Unknown"}</td>
+                      <td>{recipe.createdAt ? new Date(recipe.createdAt).toLocaleDateString() : "N/A"}</td>
+                      {activeTab === "rejected" && (
+                        <td>{recipe.rejectionReason || "No reason provided"}</td>
                       )}
                       <td className="action-buttons">
                         <Link to={`/recipe/${recipe.id}`} target="_blank" className="btn-view">
                           View
                         </Link>
 
-                        {activeTab !== 'approved' && (
+                        {activeTab !== "approved" && (
                           <button onClick={() => handleApprove(recipe.id)} className="btn-approve">
                             ✓ Approve
                           </button>
@@ -257,11 +247,11 @@ function ModeratorDashboard() {
 
       {selectedRecipe && (
         <div className="modal-overlay" onClick={() => setSelectedRecipe(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Reject Recipe</h3>
             <textarea
               value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
+              onChange={e => setRejectionReason(e.target.value)}
               rows="4"
               placeholder="Reason for rejection..."
             />

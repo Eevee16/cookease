@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/config';
-import RecipeCard from '../components/RecipeCard';
+import RecipeCard from '../components/recipeCard';
+import { supabase } from '../supabaseClient'; // Make sure your Supabase client is set up
 import '../styles/SearchByIngredients.css';
 
 function SearchByIngredients() {
-  const navigate = useNavigate();
-
   const [recipes, setRecipes] = useState([]);
   const [filteredRecipes, setFilteredRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,12 +45,17 @@ function SearchByIngredients() {
     default: '/images/ingredients/default.jpg'
   };
 
-  // --- Fetch all recipes from Firestore ---
+  // --- Fetch recipes from Supabase ---
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const snapshot = await getDocs(collection(db, 'recipes'));
-        const recipesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const { data: recipesData, error } = await supabase
+          .from('recipes')
+          .select('*');
+
+        if (error) throw error;
+
+        const recipesList = recipesData.map(r => ({ ...r, id: r.id }));
         setRecipes(recipesList);
         setFilteredRecipes(recipesList);
         extractIngredients(recipesList);
@@ -93,18 +94,21 @@ function SearchByIngredients() {
     setAllIngredients(Array.from(ingredientsSet).sort());
   };
 
-  // --- Fetch ingredient images from Firestore ---
+  // --- Fetch ingredient images from Supabase ---
   useEffect(() => {
     const fetchIngredientImages = async () => {
       try {
-        const snapshot = await getDocs(collection(db, 'ingredients'));
+        const { data: ingData, error } = await supabase
+          .from('ingredients')
+          .select('*');
+
+        if (error) throw error;
+
         const imagesMap = {};
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.name && data.image) {
-            imagesMap[data.name.toLowerCase()] = data.image;
-          }
+        ingData.forEach(item => {
+          if (item.name && item.image) imagesMap[item.name.toLowerCase()] = item.image;
         });
+
         setIngredientImages(imagesMap);
       } catch (err) {
         console.error('Error fetching ingredient images:', err);
@@ -145,16 +149,9 @@ function SearchByIngredients() {
 
   // --- Get image for ingredient ---
   const getIngredientImage = (ingredient) => {
-  const lower = ingredient.toLowerCase();
-
-  // 1️⃣ Firestore image
-  if (ingredientImages[lower]) return ingredientImages[lower];
-
-  // 2️⃣ Dynamic local path (convert spaces to dashes)
-  const dynamicPath = `/images/ingredients/${lower.replace(/\s+/g, '-')}.jpg`;
-
-  // 3️⃣ Check if image exists (browser will handle 404)
-  return dynamicPath;
+    const lower = ingredient.toLowerCase();
+    if (ingredientImages[lower]) return ingredientImages[lower];
+    return `/images/ingredients/${lower.replace(/\s+/g, '-')}.jpg`;
   };
 
   // --- Filter ingredients by search ---
@@ -175,8 +172,6 @@ function SearchByIngredients() {
 
   return (
     <div className="search-ingredients-page">
-      
-
       <main className="search-main">
         <div className="search-container">
           <div className="search-title-section">

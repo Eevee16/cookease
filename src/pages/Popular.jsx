@@ -1,49 +1,36 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  doc,
-  updateDoc,
-  increment,
-} from 'firebase/firestore';
-import { db } from '../firebase/config';
-import { useAuth } from '../contexts/AuthContext';
-
-import '../styles/Popular.css';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabase";
+import "../styles/Popular.css";
 
 const Popular = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const isNavigatingRef = useRef(false);
 
-  const isNavigatingRef = useRef(false); // ✅ MUST be inside component
-
-  const [activeTab, setActiveTab] = useState('All Time');
+  const [activeTab, setActiveTab] = useState("All Time");
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch popular recipes
   useEffect(() => {
     const fetchPopularRecipes = async () => {
       try {
-        const q = query(
-          collection(db, 'recipes'),
-          orderBy('views', 'desc'),
-          limit(12)
-        );
+        const { data, error } = await supabase
+          .from("recipes")
+          .select("*")
+          .order("views", { ascending: false })
+          .limit(12);
 
-        const snapshot = await getDocs(q);
-        const recipesData = snapshot.docs.map((docSnap, index) => ({
-          id: docSnap.id,
-          ...docSnap.data(),
+        if (error) throw error;
+
+        const recipesData = data.map((recipe, index) => ({
+          ...recipe,
           rank: index + 1,
         }));
 
         setRecipes(recipesData);
-      } catch (error) {
-        console.error('Error fetching popular recipes:', error);
+      } catch (err) {
+        console.error("Error fetching popular recipes:", err);
       } finally {
         setLoading(false);
       }
@@ -52,9 +39,8 @@ const Popular = () => {
     fetchPopularRecipes();
   }, []);
 
-  // ✅ ONE increment ONLY
+  // Increment views safely
   const handleRecipeClick = async (id) => {
-    // HARD LOCK (prevents Strict Mode + double clicks)
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
 
@@ -62,16 +48,14 @@ const Popular = () => {
 
     try {
       if (!sessionStorage.getItem(sessionKey)) {
-        sessionStorage.setItem(sessionKey, 'true');
+        sessionStorage.setItem(sessionKey, "true");
 
-        const recipeRef = doc(db, 'recipes', id);
-        await updateDoc(recipeRef, {
-          views: increment(1),
-        });
-}
-
-    } catch (error) {
-      console.error('Error updating views:', error);
+        // Increment views in Supabase
+        const { error } = await supabase.rpc("increment_recipe_views", { recipe_id: id });
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("Error updating views:", err);
       sessionStorage.removeItem(sessionKey);
     } finally {
       navigate(`/recipe/${id}`);
@@ -79,14 +63,12 @@ const Popular = () => {
   };
 
   const formatViews = (num) => {
-    if (!num) return '0';
+    if (!num) return "0";
     if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
     return num.toString();
   };
 
-  if (loading) {
-    return <div className="loading">Loading popular recipes...</div>;
-  }
+  if (loading) return <div className="loading">Loading popular recipes...</div>;
 
   return (
     <div className="popular-page-wrapper">
@@ -99,11 +81,11 @@ const Popular = () => {
         </div>
 
         <div className="popular-tabs">
-          {['All Time', 'This Week', 'New & Rising'].map((tab) => (
+          {["All Time", "This Week", "New & Rising"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+              className={`tab-button ${activeTab === tab ? "active" : ""}`}
             >
               {tab}
             </button>
@@ -119,12 +101,12 @@ const Popular = () => {
             recipes.map((recipe) => {
               const safeRecipe = {
                 id: recipe.id,
-                title: recipe.title || 'Untitled',
-                image: recipe.image || '/images/placeholder.png',
+                title: recipe.title || "Untitled",
+                image: recipe.image || "/images/placeholder.png",
                 ingredients: Array.isArray(recipe.ingredients)
                   ? recipe.ingredients
                   : [],
-                difficulty: recipe.difficulty || 'Medium',
+                difficulty: recipe.difficulty || "Medium",
                 views: recipe.views || 0,
                 rank: recipe.rank,
               };
@@ -147,8 +129,8 @@ const Popular = () => {
                     <h3 className="recipe-title">{safeRecipe.title}</h3>
 
                     <p className="recipe-ingredients">
-                      {safeRecipe.ingredients.slice(0, 3).join(', ')}
-                      {safeRecipe.ingredients.length > 3 && '...'}
+                      {safeRecipe.ingredients.slice(0, 3).join(", ")}
+                      {safeRecipe.ingredients.length > 3 && "..."}
                     </p>
 
                     <div className="recipe-card-footer">
