@@ -97,12 +97,17 @@ function Signup() {
     }
 
     try {
-      // Step 1: Sign up user
+      // Step 1: Sign up user with metadata
+      // The trigger will automatically create the profile using this data
       const { data: userData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`
+          emailRedirectTo: `${window.location.origin}/login`,
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName
+          }
         }
       });
 
@@ -113,13 +118,11 @@ function Signup() {
       }
 
       const userId = userData.user.id;
-      let photoURL = null;
 
-      // Step 2: Upload profile image if provided
+      // Step 2: Upload profile image AFTER user is created (now authenticated)
       if (profileImage) {
         const fileExt = profileImage.name.split('.').pop();
         const fileName = `avatar.${fileExt}`;
-        // FIXED: Use correct path structure {user_id}/{filename}
         const filePath = `${userId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -131,32 +134,24 @@ function Signup() {
 
         if (uploadError) {
           console.error('Avatar upload error:', uploadError);
-          // Don't throw - continue signup even if avatar fails
+          // Don't throw - continue even if avatar upload fails
         } else {
           // Get public URL
           const { data: urlData } = supabase.storage
             .from('avatars')
             .getPublicUrl(filePath);
           
-          photoURL = urlData.publicUrl;
-        }
-      }
+          // Update the profile with the photo URL
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ photo_url: urlData.publicUrl })
+            .eq('id', userId);
 
-      // Step 3: Insert user profile
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: userId,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          photo_url: photoURL,
-          role: 'user' // Add default role
+          if (updateError) {
+            console.error('Photo URL update error:', updateError);
+            // Don't throw - profile exists, just photo URL update failed
+          }
         }
-      ]);
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw new Error('Account created but profile setup failed. Please try logging in.');
       }
 
       alert('Account created! Check your email to confirm.');
@@ -169,7 +164,7 @@ function Signup() {
       if (err.message && err.message.includes('rate limit')) {
         setErrors({ general: 'Too many signup attempts. Please wait a minute and try again.' });
       } else {
-        setErrors({ general: err.message || 'Signup failed' });
+        setErrors({ general: err.message || 'Signup failed. Please try again.' });
       }
 
     } finally {

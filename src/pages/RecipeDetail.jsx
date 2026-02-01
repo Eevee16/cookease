@@ -129,7 +129,7 @@ function RecipeDetail() {
       <div className="detail-hero">
         <div className="hero-container">
           <div className="hero-image">
-            <img loading="lazy" src={recipe.image} alt={recipe.title} />
+            <img loading="lazy" src={recipe.image_url || recipe.image} alt={recipe.title} />
             <div className="rating-badge">
               <span className="rating-star">★</span>
               <span className="rating-value">{rating.toFixed(1)}</span>
@@ -145,11 +145,11 @@ function RecipeDetail() {
 
             <div className="author-info">
               <div className="author-avatar">
-                {recipe.ownerName ? recipe.ownerName[0].toUpperCase() : "U"}
+                {recipe.owner_name ? recipe.owner_name[0].toUpperCase() : "U"}
               </div>
               <div className="author-details">
                 <p className="author-label">Recipe by</p>
-                <p className="author-name">{recipe.ownerName || "Anonymous"}</p>
+                <p className="author-name">{recipe.owner_name || "Anonymous"}</p>
               </div>
             </div>
 
@@ -172,7 +172,7 @@ function RecipeDetail() {
                 <span className="info-icon">⏱</span>
                 <div className="info-content">
                   <span className="info-label">Prep Time</span>
-                  <span className="info-value">{recipe.prepTime || "15 min"}</span>
+                  <span className="info-value">{recipe.prepTime || recipe.prep_time || "15 min"}</span>
                 </div>
               </div>
 
@@ -180,7 +180,7 @@ function RecipeDetail() {
                 <span className="info-icon">👨‍🍳</span>
                 <div className="info-content">
                   <span className="info-label">Cook Time</span>
-                  <span className="info-value">{recipe.cookTime || "30 min"}</span>
+                  <span className="info-value">{recipe.cookTime || recipe.cook_time || "30 min"}</span>
                 </div>
               </div>
 

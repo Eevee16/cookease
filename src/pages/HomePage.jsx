@@ -20,7 +20,7 @@ function HomePage() {
           .from("recipes")
           .select("*")
           .eq("status", "approved")
-          .order("createdAt", { ascending: false });
+          .order("created_at", { ascending: false });
 
         if (approvedError) throw approvedError;
 
@@ -29,7 +29,7 @@ function HomePage() {
           .from("recipes")
           .select("*")
           .eq("status", "done")
-          .order("createdAt", { ascending: false });
+          .order("created_at", { ascending: false });
 
         if (doneError) throw doneError;
 

@@ -31,7 +31,7 @@ export function ModeratorProvider({ children }) {
         console.log('Checking moderator/admin status for user:', user.id);
 
         const { data, error } = await supabase
-          .from('users')
+          .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single();
