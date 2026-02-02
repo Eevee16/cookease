@@ -6,7 +6,7 @@ import RecipeCard from "../components/recipeCard";
 import "../styles/App.css";
 
 function HomePage() {
-  const { userData } = useRoles(); // useRoles gives us current user info
+  const { userData } = useRoles();
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +70,7 @@ function HomePage() {
               const safeRecipe = {
                 id: recipe.id,
                 title: recipe.title || "Untitled",
-                image: recipe.image || "/images/placeholder.png",
+                image: recipe.image_url || "/images/placeholder.png",
                 ingredients: Array.isArray(recipe.ingredients)
                   ? recipe.ingredients
                   : [],
@@ -78,7 +78,12 @@ function HomePage() {
                 difficulty: recipe.difficulty || "N/A",
               };
 
-              return <RecipeCard key={safeRecipe.id} recipe={safeRecipe} />;
+              return (
+                <RecipeCard
+                  key={safeRecipe.id}
+                  recipe={safeRecipe}
+                />
+              );
             })
           )}
         </div>

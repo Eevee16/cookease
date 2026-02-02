@@ -1,0 +1,49 @@
+.my-recipes-page {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+.recipe-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+}
+
+.recipe-item {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.recipe-item.pending {
+  border: 2px solid #f97316; /* orange border for pending */
+}
+
+.recipe-item h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.recipe-thumb {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.recipe-item p {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 4px 0;
+}

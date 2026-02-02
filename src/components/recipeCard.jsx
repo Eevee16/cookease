@@ -13,7 +13,7 @@ function RecipeCard({ recipe }) {
   const emptyStars = "☆".repeat(5 - rating);
 
   const imageSrc =
-    recipe.image_url || "/images/recipe-placeholder.jpg";
+    recipe.image || "/images/recipe-placeholder.jpg";
 
   const ingredientsText = Array.isArray(recipe.ingredients)
     ? recipe.ingredients.join(", ")

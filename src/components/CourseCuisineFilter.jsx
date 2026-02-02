@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "../styles/CourseCuisineFilter.css";
 
 function CourseCuisineFilter({ recipes = [], onFilteredRecipes }) {
   const [selectedCategory, setSelectedCategory] = useState("");

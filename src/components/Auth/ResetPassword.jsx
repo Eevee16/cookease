@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
+import { supabase } from "../../supabaseClient"; // make sure this points to the correct client
 
 function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -9,8 +9,16 @@ function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
+  // Supabase reset token from query string
   const accessToken = searchParams.get("access_token");
+
+  useEffect(() => {
+    if (!accessToken) {
+      setMessage("Invalid or expired reset link.");
+    }
+  }, [accessToken]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,22 +28,36 @@ function ResetPassword() {
       return;
     }
 
+    setLoading(true);
+
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Update user password using Supabase auth API
+      const { data, error } = await supabase.auth.updateUser({
         password: newPassword,
-      }, accessToken);
+      }, {
+        // Pass the access_token from the URL
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
 
       if (error) throw error;
 
-      setMessage("Password successfully updated!");
-      setTimeout(() => navigate("/login"), 2000);
+      setMessage("Password successfully updated! Redirecting to login...");
+      setTimeout(() => navigate("/login"), 2500);
     } catch (err) {
-      setMessage(err.message);
+      console.error("Reset password error:", err);
+      setMessage(err.message || "Something went wrong. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   if (!accessToken) {
-    return <p>Invalid or expired reset link.</p>;
+    return (
+      <div className="reset-password-page">
+        <h2>Reset Password</h2>
+        <p>{message}</p>
+      </div>
+    );
   }
 
   return (
@@ -57,7 +79,9 @@ function ResetPassword() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
         />
-        <button type="submit">Reset Password</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Updating..." : "Reset Password"}
+        </button>
       </form>
     </div>
   );

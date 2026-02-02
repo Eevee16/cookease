@@ -11,10 +11,16 @@ function Layout({ children }) {
 
   return (
     <div className="app-layout">
+      {/* Header */}
       <header className="header">
         <div className="header-content">
           <button className="menu-btn">☰</button>
-          <h1 className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+
+          <h1
+            className="logo"
+            onClick={() => navigate("/")}
+            style={{ cursor: "pointer" }}
+          >
             CookEase
           </h1>
 
@@ -23,6 +29,7 @@ function Layout({ children }) {
             <button>🔍</button>
           </div>
 
+          {/* Navigation */}
           <nav className="nav">
             <Link to="/">Home</Link>
             <Link to="/popular">Popular</Link>
@@ -39,18 +46,29 @@ function Layout({ children }) {
               </div>
             </div>
 
-            <Link to="/add-recipe" className="add-recipe-link">+ Add Recipe</Link>
+            <Link to="/add-recipe" className="add-recipe-link">
+              + Add Recipe
+            </Link>
 
+            {/* Moderator/Admin Links */}
             {isModerator && <Link to="/moderator">📋 Moderator</Link>}
             {isAdmin && <Link to="/admin">⚙️ Admin</Link>}
 
+            {/* User Dropdown */}
             {user ? (
               <div className="user-menu">
-                <button onClick={() => setShowUserMenu(!showUserMenu)}>👤 {user.email} ▼</button>
+                <button onClick={() => setShowUserMenu(!showUserMenu)}>
+                  👤 {user.email} ▼
+                </button>
+
                 {showUserMenu && (
                   <div className="user-dropdown">
-                    <Link to="/profile" onClick={() => setShowUserMenu(false)}>My Profile</Link>
-                    <Link to="/my-recipes" onClick={() => setShowUserMenu(false)}>My Recipes</Link>
+                    <Link to="/profile" onClick={() => setShowUserMenu(false)}>
+                      My Profile
+                    </Link>
+                    <Link to="/my-recipes" onClick={() => setShowUserMenu(false)}>
+                      My Recipes
+                    </Link>
                     <button onClick={logout}>Logout</button>
                   </div>
                 )}
@@ -65,8 +83,10 @@ function Layout({ children }) {
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="main-content">{children}</main>
 
+      {/* Footer */}
       <footer className="footer">
         <div className="footer-content">
           <p>&copy; 2026 CookEase. All rights reserved.</p>

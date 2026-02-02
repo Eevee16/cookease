@@ -15,6 +15,8 @@ import SearchByIngredients from "./pages/SearchByIngredients.jsx";
 import ModeratorDashboard from "./pages/ModeratorDashboard.jsx";
 import SearchByCourseCuisine from "./pages/SearchByCourseCuisine.jsx";
 import ResetPassword from "./components/Auth/ResetPassword.jsx";
+import Profile from "./pages/Profile.jsx";
+import MyRecipes from "./pages/MyRecipes.jsx";
 
 function App() {
   // 🔍 Supabase auth sanity check
@@ -47,11 +49,28 @@ function App() {
           <Route path="/popular" element={<Popular />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
+          {/* Protected Routes */}
           <Route
             path="/add-recipe"
             element={
               <ProtectedRoute>
                 <AddRecipe />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-recipes"
+            element={
+              <ProtectedRoute>
+                <MyRecipes />
               </ProtectedRoute>
             }
           />

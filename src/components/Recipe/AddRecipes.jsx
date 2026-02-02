@@ -252,7 +252,6 @@ function AddRecipe() {
             {/* Basic Info */}
             <div className="form-section">
               <h2>Basic Information</h2>
-              
               <div className="form-group">
                 <label htmlFor="title">Recipe Title *</label>
                 <input

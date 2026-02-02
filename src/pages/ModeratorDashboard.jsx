@@ -58,15 +58,13 @@ function ModeratorDashboard() {
       return;
     }
 
-    if (actionLoading) return; // Prevent multiple clicks
+    if (actionLoading) return;
     
     setActionLoading(true);
     try {
       const { error } = await supabase
         .from("recipes")
-        .update({
-          status: "approved"
-        })
+        .update({ status: "approved" })
         .eq("id", recipeId);
 
       if (error) throw error;
@@ -129,20 +127,22 @@ function ModeratorDashboard() {
     
     setActionLoading(true);
     try {
-      // Delete the recipe image from storage first (if exists)
-      const recipe = [...pendingRecipes, ...approvedRecipes, ...rejectedRecipes].find(r => r.id === recipeId);
+      const recipe = [...pendingRecipes, ...approvedRecipes, ...rejectedRecipes]
+        .find(r => r.id === recipeId);
       
       if (recipe && recipe.image_url) {
-        // Extract file path from URL
-        const urlParts = recipe.image_url.split('/recipes/');
+        const urlParts = recipe.image_url.split("/recipes/");
         if (urlParts[1]) {
-          const filePath = urlParts[1].split('?')[0]; // Remove query params
-          await supabase.storage.from('recipes').remove([filePath]);
+          const filePath = urlParts[1].split("?")[0];
+          await supabase.storage.from("recipes").remove([filePath]);
         }
       }
 
-      // Delete the recipe from database
-      const { error } = await supabase.from("recipes").delete().eq("id", recipeId);
+      const { error } = await supabase
+        .from("recipes")
+        .delete()
+        .eq("id", recipeId);
+
       if (error) throw error;
 
       alert("🗑 Recipe deleted successfully");
@@ -189,23 +189,14 @@ function ModeratorDashboard() {
           <div className="stat-card pending">
             <h3>Pending Review</h3>
             <p className="stat-number">{pendingRecipes.length}</p>
-            <p className="stat-label">
-              {pendingRecipes.length === 1 ? 'recipe' : 'recipes'} waiting
-            </p>
           </div>
           <div className="stat-card approved">
             <h3>Approved</h3>
             <p className="stat-number">{approvedRecipes.length}</p>
-            <p className="stat-label">
-              {approvedRecipes.length === 1 ? 'recipe' : 'recipes'} live
-            </p>
           </div>
           <div className="stat-card rejected">
             <h3>Rejected</h3>
             <p className="stat-number">{rejectedRecipes.length}</p>
-            <p className="stat-label">
-              {rejectedRecipes.length === 1 ? 'recipe' : 'recipes'} declined
-            </p>
           </div>
         </div>
 
@@ -218,9 +209,13 @@ function ModeratorDashboard() {
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
               <span className="tab-count">
-                ({tab === "pending" ? pendingRecipes.length : 
-                  tab === "approved" ? approvedRecipes.length : 
-                  rejectedRecipes.length})
+                (
+                {tab === "pending"
+                  ? pendingRecipes.length
+                  : tab === "approved"
+                  ? approvedRecipes.length
+                  : rejectedRecipes.length}
+                )
               </span>
             </button>
           ))}
@@ -254,7 +249,10 @@ function ModeratorDashboard() {
                     <tr key={recipe.id}>
                       <td>
                         <img
-                          src={recipe.image_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23e0e0e0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E"}
+                          src={
+                            recipe.image_url ||
+                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23e0e0e0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E"
+                          }
                           alt={recipe.title}
                           className="recipe-thumbnail"
                           loading="lazy"
@@ -270,11 +268,13 @@ function ModeratorDashboard() {
                       </td>
                       <td>{recipe.owner_name || "Unknown"}</td>
                       <td>
-                        {recipe.created_at ? new Date(recipe.created_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        }) : "N/A"}
+                        {recipe.created_at
+                          ? new Date(recipe.created_at).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric"
+                            })
+                          : "N/A"}
                       </td>
                       {activeTab === "rejected" && (
                         <td className="rejection-reason">
@@ -282,42 +282,38 @@ function ModeratorDashboard() {
                         </td>
                       )}
                       <td className="action-buttons">
-                        <Link 
-                          to={`/recipe/${recipe.id}`} 
-                          target="_blank" 
+                        <Link
+                          to={`/recipe/${recipe.id}`}
+                          target="_blank"
                           className="btn-view"
-                          title="View recipe in new tab"
                         >
                           👁 View
                         </Link>
 
                         {activeTab !== "approved" && (
-                          <button 
-                            onClick={() => handleApprove(recipe.id)} 
+                          <button
+                            onClick={() => handleApprove(recipe.id)}
                             className="btn-approve"
                             disabled={actionLoading}
-                            title="Approve this recipe"
                           >
                             ✓ Approve
                           </button>
                         )}
 
                         {activeTab !== "rejected" && (
-                          <button 
-                            onClick={() => handleReject(recipe.id)} 
+                          <button
+                            onClick={() => handleReject(recipe.id)}
                             className="btn-reject"
                             disabled={actionLoading}
-                            title="Reject this recipe"
                           >
                             ✕ Reject
                           </button>
                         )}
 
-                        <button 
-                          onClick={() => handleDelete(recipe.id, recipe.title)} 
+                        <button
+                          onClick={() => handleDelete(recipe.id, recipe.title)}
                           className="btn-delete"
                           disabled={actionLoading}
-                          title="Delete this recipe permanently"
                         >
                           🗑 Delete
                         </button>
@@ -331,33 +327,30 @@ function ModeratorDashboard() {
         </div>
       </div>
 
-      {/* Rejection Modal */}
       {selectedRecipe && (
         <div className="modal-overlay" onClick={() => !actionLoading && setSelectedRecipe(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Reject Recipe</h3>
             <p className="modal-description">
-              Please provide a clear reason for rejecting this recipe. 
-              This will help the user improve their submission.
+              Please provide a clear reason for rejecting this recipe.
             </p>
             <textarea
               value={rejectionReason}
               onChange={e => setRejectionReason(e.target.value)}
               rows="4"
-              placeholder="Example: Recipe instructions are incomplete, or image quality is too low..."
               className="rejection-textarea"
               disabled={actionLoading}
             />
             <div className="modal-actions">
-              <button 
-                onClick={() => setSelectedRecipe(null)} 
+              <button
+                onClick={() => setSelectedRecipe(null)}
                 className="btn-cancel"
                 disabled={actionLoading}
               >
                 Cancel
               </button>
-              <button 
-                onClick={confirmReject} 
+              <button
+                onClick={confirmReject}
                 className="btn-confirm-reject"
                 disabled={actionLoading || !rejectionReason.trim()}
               >
