@@ -64,7 +64,10 @@ function AddRecipe() {
       <div className="add-recipe-page">
         <div className="add-recipe-main">
           <div className="add-recipe-container">
-            <p>Loading...</p>
+            <div className="loading-spinner">
+              <div className="spinner"></div>
+              <p>Loading...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -72,22 +75,49 @@ function AddRecipe() {
   }
 
   /* INPUT CHANGE */
-  const handleChange = (e) =>
+  const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Clear error when user starts typing
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
+    }
+  };
 
   /* IMAGE */
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const compressed = await imageCompression(file, {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1200,
-      useWebWorker: true
-    });
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
 
-    setImageFile(compressed);
-    setImagePreview(URL.createObjectURL(compressed));
+    // Validate file size (max 10MB before compression)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size should be less than 10MB');
+      return;
+    }
+
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true
+      });
+
+      setImageFile(compressed);
+      setImagePreview(URL.createObjectURL(compressed));
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      alert('Failed to process image. Please try another file.');
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview("");
   };
 
   /* INGREDIENTS */
@@ -95,6 +125,9 @@ function AddRecipe() {
     const items = [...formData.ingredients];
     items[i] = v;
     setFormData({ ...formData, ingredients: items });
+    if (fieldErrors.ingredients) {
+      setFieldErrors({ ...fieldErrors, ingredients: "" });
+    }
   };
 
   const addIngredient = () =>
@@ -113,6 +146,9 @@ function AddRecipe() {
     const steps = [...formData.instructions];
     steps[i] = v;
     setFormData({ ...formData, instructions: steps });
+    if (fieldErrors.instructions) {
+      setFieldErrors({ ...fieldErrors, instructions: "" });
+    }
   };
 
   const addInstruction = () =>
@@ -142,16 +178,21 @@ function AddRecipe() {
     };
 
     const errors = {};
-    if (!cleaned.title) errors.title = "Recipe title is required";
+    if (!cleaned.title.trim()) errors.title = "Recipe title is required";
     if (!cleaned.category) errors.category = "Please select a category";
     if (!cleaned.cuisine) errors.cuisine = "Please select a cuisine";
     if (!cleaned.difficulty) errors.difficulty = "Please select difficulty";
     if (!cleaned.ingredients.length) errors.ingredients = "Add at least one ingredient";
-    if (!cleaned.instructions.length) errors.instructions = "Add at least one step";
+    if (!cleaned.instructions.length) errors.instructions = "Add at least one instruction step";
 
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       setSubmitting(false);
+      // Scroll to first error
+      const firstErrorField = document.querySelector('.error');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
 
@@ -221,8 +262,10 @@ function AddRecipe() {
       <div className="add-recipe-main">
         <div className="add-recipe-container">
 
-          <h1 className="page-title">Add New Recipe</h1>
-          <p className="page-subtitle">Share your favorite dish with others</p>
+          <div className="page-header">
+            <h1 className="page-title">Add New Recipe</h1>
+            <p className="page-subtitle">Share your favorite dish with the community</p>
+          </div>
 
           <form className="recipe-form" onSubmit={handleSubmit}>
             
@@ -235,14 +278,35 @@ function AddRecipe() {
                   accept="image/*"
                   onChange={handleImageChange}
                   id="recipe-image"
+                  style={{ display: 'none' }}
                 />
                 <label htmlFor="recipe-image" className="image-upload-label">
                   {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="image-preview" />
+                    <div className="image-preview-wrapper">
+                      <img src={imagePreview} alt="Preview" className="image-preview" />
+                      <button 
+                        type="button" 
+                        className="remove-image-btn"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          removeImage();
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
                   ) : (
                     <div className="upload-placeholder">
-                      <span>📷</span>
-                      <p>Click to upload image</p>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                      <p>Click to upload recipe image</p>
+                      <span>PNG, JPG up to 10MB</span>
                     </div>
                   )}
                 </label>
@@ -252,6 +316,7 @@ function AddRecipe() {
             {/* Basic Info */}
             <div className="form-section">
               <h2>Basic Information</h2>
+              
               <div className="form-group">
                 <label htmlFor="title">Recipe Title *</label>
                 <input
@@ -262,6 +327,7 @@ function AddRecipe() {
                   onChange={handleChange}
                   placeholder="e.g., Chicken Adobo"
                   required
+                  className={fieldErrors.title ? "error-input" : ""}
                 />
                 {fieldErrors.title && <span className="error">{fieldErrors.title}</span>}
               </div>
@@ -275,6 +341,7 @@ function AddRecipe() {
                     value={formData.category}
                     onChange={handleChange}
                     required
+                    className={fieldErrors.category ? "error-input" : ""}
                   >
                     <option value="">Select category</option>
                     {categoryOptions.map(cat => (
@@ -292,6 +359,7 @@ function AddRecipe() {
                     value={formData.cuisine}
                     onChange={handleChange}
                     required
+                    className={fieldErrors.cuisine ? "error-input" : ""}
                   >
                     <option value="">Select cuisine</option>
                     {cuisineOptions.map(cui => (
@@ -311,6 +379,7 @@ function AddRecipe() {
                     value={formData.difficulty}
                     onChange={handleChange}
                     required
+                    className={fieldErrors.difficulty ? "error-input" : ""}
                   >
                     <option value="">Select difficulty</option>
                     {difficultyOptions.map(diff => (
@@ -321,7 +390,10 @@ function AddRecipe() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="servings">Servings</label>
+                  <label htmlFor="servings">
+                    Servings
+                    <span className="field-note">Default is 4 • Measurements may vary</span>
+                  </label>
                   <input
                     type="number"
                     id="servings"
@@ -329,6 +401,7 @@ function AddRecipe() {
                     value={formData.servings}
                     onChange={handleChange}
                     min="1"
+                    max="100"
                   />
                 </div>
               </div>
@@ -344,6 +417,7 @@ function AddRecipe() {
                     onChange={handleChange}
                     placeholder="e.g., 15"
                     min="0"
+                    max="999"
                   />
                 </div>
 
@@ -357,6 +431,7 @@ function AddRecipe() {
                     onChange={handleChange}
                     placeholder="e.g., 30"
                     min="0"
+                    max="999"
                   />
                 </div>
               </div>
@@ -364,68 +439,95 @@ function AddRecipe() {
 
             {/* Ingredients */}
             <div className="form-section">
-              <h2>Ingredients *</h2>
+              <div className="section-header">
+                <h2>Ingredients *</h2>
+                <span className="item-count">{formData.ingredients.filter(i => i.trim()).length} items</span>
+              </div>
               {fieldErrors.ingredients && <span className="error">{fieldErrors.ingredients}</span>}
               
-              {formData.ingredients.map((ingredient, index) => (
-                <div key={index} className="dynamic-field">
-                  <input
-                    type="text"
-                    value={ingredient}
-                    onChange={(e) => handleIngredientChange(index, e.target.value)}
-                    placeholder={`Ingredient ${index + 1}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeIngredient(index)}
-                    className="remove-btn"
-                    disabled={formData.ingredients.length === 1}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+              <div className="dynamic-list">
+                {formData.ingredients.map((ingredient, index) => (
+                  <div key={index} className="dynamic-field">
+                    <span className="field-number">{index + 1}</span>
+                    <input
+                      type="text"
+                      value={ingredient}
+                      onChange={(e) => handleIngredientChange(index, e.target.value)}
+                      placeholder={`e.g., 2 cups rice`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeIngredient(index)}
+                      className="remove-btn"
+                      disabled={formData.ingredients.length === 1}
+                      title="Remove ingredient"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
               
               <button
                 type="button"
                 onClick={addIngredient}
                 className="add-btn"
               >
-                + Add Ingredient
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Ingredient
               </button>
             </div>
 
             {/* Instructions */}
             <div className="form-section">
-              <h2>Instructions *</h2>
+              <div className="section-header">
+                <h2>Instructions *</h2>
+                <span className="item-count">{formData.instructions.filter(i => i.trim()).length} steps</span>
+              </div>
               {fieldErrors.instructions && <span className="error">{fieldErrors.instructions}</span>}
               
-              {formData.instructions.map((instruction, index) => (
-                <div key={index} className="dynamic-field">
-                  <span className="step-number">{index + 1}.</span>
-                  <textarea
-                    value={instruction}
-                    onChange={(e) => handleInstructionChange(index, e.target.value)}
-                    placeholder={`Step ${index + 1}`}
-                    rows="3"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeInstruction(index)}
-                    className="remove-btn"
-                    disabled={formData.instructions.length === 1}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+              <div className="dynamic-list">
+                {formData.instructions.map((instruction, index) => (
+                  <div key={index} className="dynamic-field instruction-field">
+                    <span className="step-number">Step {index + 1}</span>
+                    <textarea
+                      value={instruction}
+                      onChange={(e) => handleInstructionChange(index, e.target.value)}
+                      placeholder={`Describe step ${index + 1}...`}
+                      rows="3"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeInstruction(index)}
+                      className="remove-btn"
+                      disabled={formData.instructions.length === 1}
+                      title="Remove step"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
               
               <button
                 type="button"
                 onClick={addInstruction}
                 className="add-btn"
               >
-                + Add Step
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Step
               </button>
             </div>
 
@@ -444,7 +546,26 @@ function AddRecipe() {
                 className="submit-btn"
                 disabled={submitting || uploading}
               >
-                {submitting ? "Submitting..." : uploading ? "Uploading..." : "Submit Recipe"}
+                {submitting ? (
+                  <>
+                    <div className="btn-spinner"></div>
+                    Submitting...
+                  </>
+                ) : uploading ? (
+                  <>
+                    <div className="btn-spinner"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                      <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Submit Recipe
+                  </>
+                )}
               </button>
             </div>
 

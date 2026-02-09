@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { createContext, useContext, useState, useEffect } from "react";
 
-const supabaseUrl = "https://nrorypixaucxuoculxta.supabase.co";
-const supabaseAnonKey = "YOUR_ANON_KEY_HERE"; // 🔒 Use anon key in frontend
+const supabaseUrl = "https://nrorypixaucxuoculxta.supabase.co"; // 🔒 Use your Supabase URL
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yb3J5cGl4YXVjeHVvY3VseHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0ODgxOTcsImV4cCI6MjA4NTA2NDE5N30.BW-Nh1AX2vqdg8OdsVEenl3f4eJ1s3iQC4C64pIC7z8"; // 🔒 Use anon key in frontend
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const RoleContext = createContext();
@@ -51,11 +51,17 @@ export function RoleProvider({ children }) {
     const fetchUserData = async () => {
       setLoading(true);
       try {
+        console.log("🔍 Fetching data for user ID:", user.id);
+        
         const { data, error } = await supabase
           .from("profiles")
           .select("id, email, role")
           .eq("id", user.id)
-          .maybeSingle(); // ✅ changed from .single() to maybeSingle()
+          .maybeSingle();
+
+        console.log("📊 Profile data from database:", data);
+        console.log("❌ Error (if any):", error);
+        console.log("👤 Role detected:", data?.role);
 
         if (error) throw error;
 
@@ -63,6 +69,9 @@ export function RoleProvider({ children }) {
         setRole(data?.role || null);
         setIsAdmin(data?.role === "admin");
         setIsModerator(data?.role === "moderator" || data?.role === "admin");
+        
+        console.log("✅ isModerator set to:", data?.role === "moderator" || data?.role === "admin");
+        console.log("✅ isAdmin set to:", data?.role === "admin");
       } catch (err) {
         console.error("Error fetching profile:", err.message || err);
         setUserData(null);

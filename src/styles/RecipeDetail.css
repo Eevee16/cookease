@@ -5,6 +5,19 @@
     background: linear-gradient(to bottom, #fff5f0, #ffffff);
 }
 
+/* Print Styles */
+@media print {
+    .detail-header,
+    .save-btn,
+    .tab-navigation {
+        display: none;
+    }
+    
+    .detail-main {
+        padding-top: 0;
+    }
+}
+
 /* Header */
 .detail-header {
     background: white;
@@ -57,6 +70,11 @@
     border-radius: 8px;
     transition: background 0.2s;
     font-size: 18px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .icon-btn:hover {
@@ -226,6 +244,39 @@
     color: #1f2937;
 }
 
+/* Servings Adjuster */
+.servings-adjuster {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.servings-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #e5e7eb;
+    background: white;
+    color: #6b7280;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.servings-btn:hover:not(:disabled) {
+    border-color: #f97316;
+    color: #f97316;
+}
+
+.servings-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
 .save-btn {
     width: 100%;
     background: linear-gradient(135deg, #f97316, #fb923c);
@@ -248,6 +299,15 @@
 .save-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+}
+
+.save-btn.saved {
+    background: linear-gradient(135deg, #10b981, #34d399);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.save-btn.saved:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
 /* Tab Navigation */
@@ -309,11 +369,34 @@
     border: 1px solid #f3f4f6;
 }
 
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
 .section-title {
     font-size: 28px;
     font-weight: 700;
     color: #1f2937;
-    margin: 0 0 24px 0;
+    margin: 0;
+}
+
+.reset-servings-btn {
+    padding: 6px 12px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reset-servings-btn:hover {
+    background: #e5e7eb;
+    color: #1f2937;
 }
 
 /* Ingredients List */
@@ -395,18 +478,24 @@
 }
 
 .recipe-note {
-    margin-top: 32px;
     padding: 20px;
     background: #fffbeb;
     border-left: 4px solid #fbbf24;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 15px;
     color: #92400e;
     line-height: 1.6;
 }
 
-.recipe-note strong {
-    color: #78350f;
+.recipe-note p {
+    margin: 0;
+}
+
+.no-items {
+    text-align: center;
+    color: #9ca3af;
+    padding: 40px;
+    font-style: italic;
 }
 
 /* Loading & Not Found */
@@ -437,6 +526,11 @@
     padding: 80px 24px;
 }
 
+.not-found-icon {
+    font-size: 80px;
+    margin-bottom: 24px;
+}
+
 .recipe-not-found h2 {
     font-size: 32px;
     color: #1f2937;
@@ -447,6 +541,9 @@
     color: #6b7280;
     font-size: 16px;
     margin-bottom: 32px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .back-btn-link {
@@ -483,6 +580,12 @@
     .info-grid {
         grid-template-columns: 1fr;
     }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
 }
 
 @media (max-width: 640px) {
@@ -514,5 +617,9 @@
         width: 32px;
         height: 32px;
         font-size: 16px;
+    }
+
+    .section-title {
+        font-size: 22px;
     }
 }
