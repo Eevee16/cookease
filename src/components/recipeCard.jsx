@@ -1,65 +1,144 @@
-import "../styles/RecipeCard.css";
 import { Link } from "react-router-dom";
+import PropTypes from "prop-types";
+import "../styles/RecipeCard.css";
 
 function RecipeCard({ recipe }) {
-  if (!recipe) return null;
+  const {
+    id,
+    title,
+    image_url,
+    category,
+    cuisine,
+    difficulty,
+    prep_time,
+    cook_time,
+    servings,
+    rating,
+    view_count,
+    owner_name
+  } = recipe;
 
-  const rating = Math.min(
-    5,
-    Math.max(0, Math.round(recipe.rating || 0))
-  );
+  const totalTime = (prep_time || 0) + (cook_time || 0);
 
-  const filledStars = "★".repeat(rating);
-  const emptyStars = "☆".repeat(5 - rating);
+  const formatTime = (minutes) => {
+    if (!minutes) return "N/A";
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
 
-  const imageSrc =
-    recipe.image || "/images/recipe-placeholder.jpg";
-
-  const ingredientsText = Array.isArray(recipe.ingredients)
-    ? recipe.ingredients.join(", ")
-    : recipe.ingredients || "";
+  const getDifficultyColor = (level) => {
+    switch (level?.toLowerCase()) {
+      case 'easy': return '#10b981';
+      case 'medium': return '#f59e0b';
+      case 'hard': return '#ef4444';
+      default: return '#6b7280';
+    }
+  };
 
   return (
-    <Link
-      to={`/recipe/${recipe.id}`}
-      className="recipe-card-link"
-      aria-label={`View ${recipe.title} details`}
-    >
-      <div className="recipe-card" role="button">
-        <div className="recipe-image">
-          <img
+    <Link to={`/recipe/${id}`} className="recipe-card">
+      <div className="recipe-card-image">
+        {image_url ? (
+          <img 
+            src={image_url} 
+            alt={title}
             loading="lazy"
-            src={imageSrc}
-            alt={recipe.title || "Recipe image"}
           />
-        </div>
-
-        <div className="recipe-content">
-          <h3 className="recipe-title">
-            {recipe.title || "Untitled Recipe"}
-          </h3>
-
-          <p className="recipe-ingredients">
-            {ingredientsText}
-          </p>
-        </div>
-
-        <div className="recipe-card-footer">
-          <div
-            className="recipe-rating"
-            aria-label={`Rating: ${rating} out of 5 stars`}
-          >
-            <span className="stars-filled">{filledStars}</span>
-            <span className="stars-empty">{emptyStars}</span>
+        ) : (
+          <div className="recipe-card-no-image">
+            <span>🍽️</span>
+            <p>No Image</p>
           </div>
-
-          <span className="recipe-difficulty">
-            {recipe.difficulty || "—"}
-          </span>
+        )}
+        
+        {/* Badges */}
+        <div className="recipe-card-badges">
+          {category && (
+            <span className="badge badge-category">{category}</span>
+          )}
+          {difficulty && (
+            <span 
+              className="badge badge-difficulty"
+              style={{ backgroundColor: getDifficultyColor(difficulty) }}
+            >
+              {difficulty}
+            </span>
+          )}
         </div>
+
+        {/* View Count */}
+        {view_count > 0 && (
+          <div className="recipe-card-views">
+            <span>👁️ {view_count}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="recipe-card-content">
+        <h3 className="recipe-card-title">{title || "Untitled Recipe"}</h3>
+        
+        {/* Cuisine */}
+        {cuisine && (
+          <p className="recipe-card-cuisine">
+            <span>🌍</span> {cuisine}
+          </p>
+        )}
+
+        {/* Info Row */}
+        <div className="recipe-card-info">
+          {totalTime > 0 && (
+            <div className="info-item">
+              <span className="info-icon">⏱️</span>
+              <span>{formatTime(totalTime)}</span>
+            </div>
+          )}
+          
+          {servings && (
+            <div className="info-item">
+              <span className="info-icon">🍽️</span>
+              <span>{servings} servings</span>
+            </div>
+          )}
+
+          {rating > 0 && (
+            <div className="info-item">
+              <span className="info-icon">⭐</span>
+              <span>{rating.toFixed(1)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Author */}
+        {owner_name && (
+          <div className="recipe-card-author">
+            <div className="author-avatar">
+              {owner_name[0]?.toUpperCase()}
+            </div>
+            <span className="author-name">by {owner_name}</span>
+          </div>
+        )}
       </div>
     </Link>
   );
 }
+
+RecipeCard.propTypes = {
+  recipe: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string,
+    image_url: PropTypes.string,
+    category: PropTypes.string,
+    cuisine: PropTypes.string,
+    difficulty: PropTypes.string,
+    prep_time: PropTypes.number,
+    cook_time: PropTypes.number,
+    servings: PropTypes.number,
+    rating: PropTypes.number,
+    view_count: PropTypes.number,
+    owner_name: PropTypes.string
+  }).isRequired
+};
 
 export default RecipeCard;

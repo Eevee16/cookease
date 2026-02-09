@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { recipes as localRecipes } from "../components/data/recipes.js";
-import { supabase } from "../supabase";
+import { supabase } from "../supabaseClient";
 import { useRoles } from "../contexts/RoleContext";
 import "../styles/RecipeDetail.css";
 
@@ -10,6 +10,9 @@ function RecipeDetail() {
   const navigate = useNavigate();
   const { userData } = useRoles();
   const localMatch = localRecipes.find((r) => r.id === Number(id));
+  
+  // Add ref to track if view has been counted
+  const hasTrackedView = useRef(false);
 
   const [recipe, setRecipe] = useState(localMatch || null);
   const [loading, setLoading] = useState(false);
@@ -48,19 +51,54 @@ function RecipeDetail() {
     fetchRecipe();
   }, [id, localMatch]);
 
-  // Increment views safely
+  // Track recipe view and increment view count (only once per session)
   useEffect(() => {
-    if (localMatch) return;
+    if (localMatch || !id || hasTrackedView.current) return;
 
-    const incrementViews = async () => {
+    const trackRecipeView = async () => {
+      // Check if already viewed in this session
+      const sessionKey = `viewed_recipe_${id}`;
+      if (sessionStorage.getItem(sessionKey)) {
+        console.log('Already viewed in this session');
+        return;
+      }
+
       try {
-        await supabase.rpc("increment_recipe_views", { recipe_id: id });
+        console.log('Tracking view for recipe:', id);
+        
+        // First, get the current view count
+        const { data: recipeData, error: fetchError } = await supabase
+          .from('recipes')
+          .select('view_count')
+          .eq('id', id)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching view count:', fetchError);
+          throw fetchError;
+        }
+
+        console.log('Current view count:', recipeData.view_count);
+
+        // Then increment it
+        const { error: updateError } = await supabase
+          .from('recipes')
+          .update({ view_count: (recipeData.view_count || 0) + 1 })
+          .eq('id', id);
+
+        if (updateError) {
+          console.error('Error updating view count:', updateError);
+        } else {
+          console.log('View tracked successfully. New count:', (recipeData.view_count || 0) + 1);
+          sessionStorage.setItem(sessionKey, 'true');
+          hasTrackedView.current = true;
+        }
       } catch (err) {
-        console.error("Error incrementing views:", err);
+        console.error('Error tracking view:', err);
       }
     };
 
-    incrementViews();
+    trackRecipeView();
   }, [id, localMatch]);
 
   const toggleIngredient = (index) => {

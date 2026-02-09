@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import RecipeCard from '../components/recipeCard';
+import RecipeCard from '../components/RecipeCard';
 import { supabase } from '../supabaseClient'; // Make sure your Supabase client is set up
 import '../styles/SearchByIngredients.css';
 
