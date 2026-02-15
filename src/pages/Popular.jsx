@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import "../styles/RecipeAnalytics.css";
+import "../styles/Popular.css";
 
 const Popular = () => {
   const [activeTab, setActiveTab] = useState("All Time");
@@ -20,6 +20,8 @@ const Popular = () => {
           .limit(12);
 
         if (error) throw error;
+
+        console.log("Fetched recipes:", data); // Debug log
 
         const recipesData = data.map((recipe, index) => ({
           ...recipe,
@@ -45,39 +47,32 @@ const Popular = () => {
 
   if (loading) {
     return (
-      <div className="analytics-page">
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p className="loading-text">Loading popular recipes...</p>
+      <div className="popular-page">
+        <div className="popular-loading">
+          <div className="popular-spinner"></div>
+          <p className="popular-loading-text">Loading popular recipes...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="analytics-page">
-      <div className="analytics-header">
-        <div className="analytics-header-content">
+    <div className="popular-page">
+      <div className="popular-header">
+        <div className="popular-header-content">
           <h1>Most Viewed Recipes</h1>
           <p>Trending dishes our community is watching right now</p>
         </div>
       </div>
 
-      <div className="analytics-main">
+      <div className="popular-main">
         {/* Tabs */}
-        <div className="filters-section" style={{ gridTemplateColumns: 'repeat(3, 1fr)', maxWidth: '600px', margin: '0 auto 32px' }}>
+        <div className="popular-tabs">
           {["All Time", "This Week", "New & Rising"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`filter-select ${activeTab === tab ? "active" : ""}`}
-              style={{
-                background: activeTab === tab ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
-                color: activeTab === tab ? 'white' : '#374151',
-                fontWeight: '700',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
+              className={`popular-tab ${activeTab === tab ? "active" : ""}`}
             >
               {tab}
             </button>
@@ -85,109 +80,73 @@ const Popular = () => {
         </div>
 
         {/* Recipe Grid */}
-        <div className="recipe-analytics-list">
-          {recipes.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">📊</div>
-              <h3>No popular recipes yet</h3>
-              <p>Check back later for trending recipes!</p>
-            </div>
-          ) : (
-            <div className="recipe-grid">
-              {recipes.map((recipe) => (
-                <Link
-                  to={`/recipe/${recipe.id}`}
-                  key={recipe.id}
-                  className="recipe-analytics-card"
-                  style={{ textDecoration: 'none', color: 'inherit' }}
-                >
-                  <div className="recipe-image-container" style={{ position: 'relative' }}>
-                    {/* Rank Badge */}
-                    <div 
-                      style={{
-                        position: 'absolute',
-                        top: '12px',
-                        left: '12px',
-                        background: recipe.rank <= 3 
-                          ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' 
-                          : 'rgba(0, 0, 0, 0.75)',
-                        color: 'white',
-                        padding: '8px 14px',
-                        borderRadius: '20px',
-                        fontSize: '14px',
-                        fontWeight: '800',
-                        zIndex: 10,
-                        backdropFilter: 'blur(8px)'
+        {recipes.length === 0 ? (
+          <div className="popular-empty">
+            <div className="popular-empty-icon">📊</div>
+            <h3>No popular recipes yet</h3>
+            <p>Check back later for trending recipes!</p>
+          </div>
+        ) : (
+          <div className="popular-grid">
+            {recipes.map((recipe) => (
+              <Link
+                to={`/recipe/${recipe.id}`}
+                key={recipe.id}
+                className="popular-card"
+              >
+                <div className="popular-image-container">
+                  {/* Rank Badge */}
+                  <div className={`rank-badge ${recipe.rank <= 3 ? 'top-three' : ''}`}>
+                    #{recipe.rank}
+                  </div>
+
+                  {recipe.image_url ? (
+                    <img 
+                      src={recipe.image_url} 
+                      alt={recipe.title} 
+                      loading="lazy"
+                      onError={(e) => {
+                        console.log("Image failed to load:", recipe.image_url);
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling.style.display = 'flex';
                       }}
-                    >
-                      #{recipe.rank}
-                    </div>
-
-                    {recipe.image_url ? (
-                      <img 
-                        src={recipe.image_url} 
-                        alt={recipe.title} 
-                        loading="lazy"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover'
-                        }}
-                      />
-                    ) : (
-                      <div className="no-image" style={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                        color: '#9ca3af',
-                        fontWeight: '600'
-                      }}>
-                        No Image
-                      </div>
-                    )}
-                    
-                    <div className="view-badge">
-                      <span>👁️ {formatViews(recipe.view_count || 0)}</span>
-                    </div>
+                    />
+                  ) : null}
+                  
+                  <div 
+                    className="no-image" 
+                    style={{ display: recipe.image_url ? 'none' : 'flex' }}
+                  >
+                    No Image
                   </div>
-
-                  <div className="recipe-info">
-                    <h3>{recipe.title || "Untitled"}</h3>
-                    <div className="recipe-meta">
-                      <span className="badge">{recipe.category || "Uncategorized"}</span>
-                      <span className="badge">{recipe.cuisine || "Global"}</span>
-                      <span 
-                        className="badge" 
-                        style={{
-                          background: recipe.difficulty === 'Easy' 
-                            ? '#d1fae5' 
-                            : recipe.difficulty === 'Hard' 
-                            ? '#fee2e2' 
-                            : '#fef3c7',
-                          color: recipe.difficulty === 'Easy' 
-                            ? '#064e3b' 
-                            : recipe.difficulty === 'Hard' 
-                            ? '#7f1d1d' 
-                            : '#78350f'
-                        }}
-                      >
-                        {recipe.difficulty || "Medium"}
-                      </span>
-                    </div>
-                    <p className="recipe-owner">By {recipe.owner_name || "Anonymous"}</p>
-                    <div className="recipe-stats">
-                      <span>⏱️ {(recipe.prep_time || 0) + (recipe.cook_time || 0)} min</span>
-                      <span>🍽️ {recipe.servings || 4} servings</span>
-                    </div>
+                  
+                  <div className="view-badge">
+                    👁️ {formatViews(recipe.view_count || 0)}
                   </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+                </div>
+
+                <div className="popular-info">
+                  <h3 className="popular-title">{recipe.title || "Untitled"}</h3>
+                  
+                  <div className="popular-badges">
+                    <span className="badge category">{recipe.category || "Uncategorized"}</span>
+                    <span className="badge cuisine">{recipe.cuisine || "Global"}</span>
+                    <span className={`badge difficulty ${(recipe.difficulty || 'Medium').toLowerCase()}`}>
+                      {recipe.difficulty || "Medium"}
+                    </span>
+                  </div>
+                  
+                  <p className="popular-owner">By {recipe.owner_name || "Anonymous"}</p>
+                  
+                  <div className="popular-stats">
+                    <span>⏱️ {(recipe.prep_time || 0) + (recipe.cook_time || 0)} min</span>
+                    <span>🍽️ {recipe.servings || 4} servings</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

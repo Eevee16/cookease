@@ -8,6 +8,21 @@ function Layout({ children }) {
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showRecipesDropdown, setShowRecipesDropdown] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    }
+  };
+
+  const handleSearchInputKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch(e);
+    }
+  };
 
   return (
     <div className="app-layout">
@@ -24,15 +39,21 @@ function Layout({ children }) {
             CookEase
           </h1>
 
-          <div className="search-bar">
-            <input type="text" placeholder="Search" />
-            <button>🔍</button>
-          </div>
+          <form className="search-bar" onSubmit={handleSearch}>
+            <input 
+              type="text" 
+              placeholder="Search recipes..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleSearchInputKeyPress}
+            />
+            <button type="submit">🔍</button>
+          </form>
 
           {/* Navigation */}
           <nav className="nav">
-            <Link to="/">Home</Link>
-            <Link to="/popular">Popular</Link>
+            <Link to="/" className="nav-link">Home</Link>
+            <Link to="/popular" className="nav-link">Popular</Link>
 
             <div
               className="dropdown"
@@ -51,13 +72,13 @@ function Layout({ children }) {
             </Link>
 
             {/* Moderator/Admin Links */}
-            {isModerator && <Link to="/moderator">📋 Moderator</Link>}
-            {isAdmin && <Link to="/admin">⚙️ Admin</Link>}
+            {isModerator && <Link to="/moderator" className="moderator-link">📋 Moderator</Link>}
+            {isAdmin && <Link to="/admin" className="admin-link">⚙️ Admin</Link>}
 
             {/* User Dropdown */}
             {user ? (
               <div className="user-menu">
-                <button onClick={() => setShowUserMenu(!showUserMenu)}>
+                <button className="user-btn" onClick={() => setShowUserMenu(!showUserMenu)}>
                   👤 {user.email} ▼
                 </button>
 
@@ -75,8 +96,8 @@ function Layout({ children }) {
               </div>
             ) : (
               <>
-                <Link to="/login">Login</Link>
-                <Link to="/signup">Sign Up</Link>
+                <Link to="/login" className="login-link">Login</Link>
+                <Link to="/signup" className="signup-link">Sign Up</Link>
               </>
             )}
           </nav>

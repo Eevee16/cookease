@@ -82,11 +82,7 @@ function HomePage() {
         <div className="hero-content">
           <h1>Discover Amazing Recipes</h1>
           <p>Find and share your favorite dishes with the community</p>
-          {userData && (
-            <Link to="/add-recipe" className="btn-add-recipe">
-              + Add Your Recipe
-            </Link>
-          )}
+          
         </div>
       </div>
 
@@ -131,16 +127,7 @@ function HomePage() {
           </div>
         )}
 
-        {/* Results Info */}
-        {recipes.length > 0 && (
-          <div className="results-info">
-            <h2 className="section-title">
-              {filteredRecipes.length === recipes.length
-                ? `All Recipes (${recipes.length})`
-                : `Found ${filteredRecipes.length} of ${recipes.length} recipes`}
-            </h2>
-          </div>
-        )}
+        
 
         {/* Recipe Grid */}
         <div className="recipe-grid">

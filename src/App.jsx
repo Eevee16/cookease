@@ -17,6 +17,7 @@ import SearchByCourseCuisine from "./pages/SearchByCourseCuisine.jsx";
 import ResetPassword from "./components/Auth/ResetPassword.jsx";
 import Profile from "./pages/Profile.jsx";
 import MyRecipes from "./pages/MyRecipes.jsx";
+import SearchResults from './pages/SearchResults';
 
 function App() {
   // 🔍 Supabase auth sanity check
@@ -48,6 +49,7 @@ function App() {
           <Route path="/moderator" element={<ModeratorDashboard />} />
           <Route path="/popular" element={<Popular />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/search" element={<SearchResults />} />
 
           {/* Protected Routes */}
           <Route

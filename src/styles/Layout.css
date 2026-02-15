@@ -150,7 +150,6 @@
   transform: translateY(0);
 }
 
-
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -178,19 +177,46 @@
 
 /* Action Links */
 .add-recipe-link {
-  background: #f97316;
-  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
   text-decoration: none;
   padding: 8px 16px;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.add-recipe-link:link,
+.add-recipe-link:visited,
+.add-recipe-link:active {
+  color: white !important;
+}
+
+.add-recipe-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.add-recipe-link:hover::before {
+  left: 100%;
 }
 
 .add-recipe-link:hover {
-  background: #ea580c;
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, #5568d3 0%, #6a3e94 100%) !important;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  color: white !important;
 }
 
 .admin-link {
@@ -205,6 +231,20 @@
 
 .admin-link:hover {
   background: #fff7ed;
+}
+
+.moderator-link {
+  color: #8b5cf6;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.moderator-link:hover {
+  background: #f5f3ff;
 }
 
 /* User Menu */
@@ -256,7 +296,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  transition: all 0.5s;
+  transition: all 0.2s;
 }
 
 .user-dropdown a:hover,
@@ -282,13 +322,15 @@
 }
 
 .signup-link {
-  background: #f97316;
+  background: #667EAA;
   color: white;
+  font-weight: 600;
 }
 
 .signup-link:hover {
-  background: #ea580c;
-  transform: translateY(-2px);
+  background: #526a91;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 170, 0.3);
 }
 
 /* Main Content */
@@ -351,7 +393,6 @@
   .dropdown-btn {
     font-size: 13px;
     padding: 6px 10px;
-    
   }
 }
 
@@ -377,19 +418,5 @@
   .footer-content {
     flex-direction: column;
     text-align: center;
-  }
-
-  .moderator-link {
-    color: #8b5cf6;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 14px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    transition: all 0.2s;
-  }
-
-  .moderator-link:hover {
-    background: #f5f3ff;
   }
 }

@@ -11,7 +11,6 @@ function RecipeDetail() {
   const { userData } = useRoles();
   const localMatch = localRecipes.find((r) => r.id === Number(id));
   
-  // Add ref to track if view has been counted
   const hasTrackedView = useRef(false);
 
   const [recipe, setRecipe] = useState(localMatch || null);
@@ -51,45 +50,29 @@ function RecipeDetail() {
     fetchRecipe();
   }, [id, localMatch]);
 
-  // Track recipe view and increment view count (only once per session)
+  // Track recipe view
   useEffect(() => {
     if (localMatch || !id || hasTrackedView.current) return;
 
     const trackRecipeView = async () => {
-      // Check if already viewed in this session
       const sessionKey = `viewed_recipe_${id}`;
-      if (sessionStorage.getItem(sessionKey)) {
-        console.log('Already viewed in this session');
-        return;
-      }
+      if (sessionStorage.getItem(sessionKey)) return;
 
       try {
-        console.log('Tracking view for recipe:', id);
-        
-        // First, get the current view count
         const { data: recipeData, error: fetchError } = await supabase
           .from('recipes')
           .select('view_count')
           .eq('id', id)
           .single();
 
-        if (fetchError) {
-          console.error('Error fetching view count:', fetchError);
-          throw fetchError;
-        }
+        if (fetchError) throw fetchError;
 
-        console.log('Current view count:', recipeData.view_count);
-
-        // Then increment it
         const { error: updateError } = await supabase
           .from('recipes')
           .update({ view_count: (recipeData.view_count || 0) + 1 })
           .eq('id', id);
 
-        if (updateError) {
-          console.error('Error updating view count:', updateError);
-        } else {
-          console.log('View tracked successfully. New count:', (recipeData.view_count || 0) + 1);
+        if (!updateError) {
           sessionStorage.setItem(sessionKey, 'true');
           hasTrackedView.current = true;
         }
@@ -109,7 +92,6 @@ function RecipeDetail() {
   };
 
   const handleSaveRecipe = () => {
-    // TODO: Implement save to favorites functionality
     setIsSaved(!isSaved);
     alert(isSaved ? "Recipe removed from favorites" : "Recipe saved to favorites!");
   };
@@ -128,7 +110,6 @@ function RecipeDetail() {
         console.log("Share failed:", err);
       }
     } else {
-      // Fallback: Copy to clipboard
       navigator.clipboard.writeText(url);
       alert("Link copied to clipboard!");
     }
@@ -163,6 +144,70 @@ function RecipeDetail() {
     }
   };
 
+  // Helper function to parse ingredients properly
+  const parseIngredients = (ingredientsData) => {
+    if (!ingredientsData) return [];
+    
+    // If it's already an array, return it
+    if (Array.isArray(ingredientsData)) {
+      return ingredientsData.filter(item => item && item.trim());
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof ingredientsData === 'string') {
+      // Try JSON parse first
+      try {
+        const parsed = JSON.parse(ingredientsData);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(item => item && item.trim());
+        }
+      } catch (e) {
+        // Not JSON, continue with string splitting
+      }
+      
+      // Split by newlines or numbered list patterns
+      return ingredientsData
+        .split(/\n|\\n/)
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+        .map(item => item.replace(/^\d+\.\s*/, '')); // Remove "1. " style numbering
+    }
+    
+    return [];
+  };
+
+  // Helper function to parse instructions properly
+  const parseInstructions = (instructionsData) => {
+    if (!instructionsData) return [];
+    
+    // If it's already an array, return it
+    if (Array.isArray(instructionsData)) {
+      return instructionsData.filter(item => item && item.trim());
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof instructionsData === 'string') {
+      // Try JSON parse first
+      try {
+        const parsed = JSON.parse(instructionsData);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(item => item && item.trim());
+        }
+      } catch (e) {
+        // Not JSON, continue with string splitting
+      }
+      
+      // Split by newlines or numbered list patterns
+      return instructionsData
+        .split(/\n|\\n/)
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+        .map(item => item.replace(/^\d+\.\s*/, '')); // Remove "1. " style numbering
+    }
+    
+    return [];
+  };
+
   if (loading) {
     return (
       <div className="recipe-detail-page">
@@ -189,17 +234,8 @@ function RecipeDetail() {
     );
   }
 
-  const ingredients = Array.isArray(recipe.ingredients)
-    ? recipe.ingredients
-    : recipe.ingredients
-    ? [recipe.ingredients]
-    : [];
-
-  const instructions = Array.isArray(recipe.instructions)
-    ? recipe.instructions
-    : recipe.instructions
-    ? [recipe.instructions]
-    : [];
+  const ingredients = parseIngredients(recipe.ingredients);
+  const instructions = parseInstructions(recipe.instructions);
 
   const rating = recipe.rating || 0;
   const baseServings = recipe.servings || 4;

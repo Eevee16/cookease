@@ -62,18 +62,39 @@ function ModeratorDashboard() {
     
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from("recipes")
-        .update({ status: "approved" })
-        .eq("id", recipeId);
+      console.log("Attempting to approve recipe:", recipeId);
+      console.log("Current user:", userData);
 
-      if (error) throw error;
+      // Try the update
+      const { data, error } = await supabase
+        .from("recipes")
+        .update({ 
+          status: "approved",
+          rejection_reason: null
+        })
+        .eq("id", recipeId)
+        .select();
+
+      console.log("Update result - data:", data);
+      console.log("Update result - error:", error);
+
+      if (error) {
+        // Check if it's a permission error
+        if (error.code === "42501" || error.message.includes("permission")) {
+          throw new Error("Permission denied. Please check your moderator permissions in Supabase RLS policies.");
+        }
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error("Recipe not found or you don't have permission to update it. Check Supabase RLS policies.");
+      }
 
       alert("✓ Recipe approved successfully!");
       await fetchRecipes();
     } catch (err) {
       console.error("Error approving recipe:", err);
-      alert("Failed to approve recipe: " + (err.message || "Unknown error"));
+      alert("Failed to approve recipe:\n\n" + err.message + "\n\nCheck the console for details.");
     } finally {
       setActionLoading(false);
     }
@@ -91,19 +112,39 @@ function ModeratorDashboard() {
       return;
     }
 
+    if (!userData) {
+      alert("You must be logged in to reject recipes");
+      return;
+    }
+
     if (actionLoading) return;
     
     setActionLoading(true);
     try {
-      const { error } = await supabase
+      console.log("Attempting to reject recipe:", selectedRecipe);
+      
+      const { data, error } = await supabase
         .from("recipes")
         .update({
           status: "rejected",
           rejection_reason: rejectionReason.trim()
         })
-        .eq("id", selectedRecipe);
+        .eq("id", selectedRecipe)
+        .select();
 
-      if (error) throw error;
+      console.log("Reject result - data:", data);
+      console.log("Reject result - error:", error);
+
+      if (error) {
+        if (error.code === "42501" || error.message.includes("permission")) {
+          throw new Error("Permission denied. Please check your moderator permissions in Supabase RLS policies.");
+        }
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error("Recipe not found or you don't have permission to update it. Check Supabase RLS policies.");
+      }
 
       alert("✗ Recipe rejected");
       setSelectedRecipe(null);
@@ -111,7 +152,7 @@ function ModeratorDashboard() {
       await fetchRecipes();
     } catch (err) {
       console.error("Error rejecting recipe:", err);
-      alert("Failed to reject recipe: " + (err.message || "Unknown error"));
+      alert("Failed to reject recipe:\n\n" + err.message + "\n\nCheck the console for details.");
     } finally {
       setActionLoading(false);
     }
@@ -123,33 +164,68 @@ function ModeratorDashboard() {
       return;
     }
 
+    if (!userData) {
+      alert("You must be logged in to delete recipes");
+      return;
+    }
+
     if (actionLoading) return;
     
     setActionLoading(true);
     try {
+      console.log("Attempting to delete recipe:", recipeId);
+
+      // Find the recipe to get image info
       const recipe = [...pendingRecipes, ...approvedRecipes, ...rejectedRecipes]
         .find(r => r.id === recipeId);
       
+      // Try to delete the image from storage if it exists
       if (recipe && recipe.image_url) {
-        const urlParts = recipe.image_url.split("/recipes/");
-        if (urlParts[1]) {
-          const filePath = urlParts[1].split("?")[0];
-          await supabase.storage.from("recipes").remove([filePath]);
+        try {
+          const urlParts = recipe.image_url.split("/recipes/");
+          if (urlParts[1]) {
+            const filePath = urlParts[1].split("?")[0];
+            console.log("Attempting to delete image:", filePath);
+            
+            const { error: storageError } = await supabase.storage
+              .from("recipes")
+              .remove([filePath]);
+            
+            if (storageError) {
+              console.warn("Could not delete image:", storageError);
+            }
+          }
+        } catch (imgErr) {
+          console.warn("Error during image deletion:", imgErr);
         }
       }
 
-      const { error } = await supabase
+      // Delete the recipe from database
+      const { data, error } = await supabase
         .from("recipes")
         .delete()
-        .eq("id", recipeId);
+        .eq("id", recipeId)
+        .select();
 
-      if (error) throw error;
+      console.log("Delete result - data:", data);
+      console.log("Delete result - error:", error);
+
+      if (error) {
+        if (error.code === "42501" || error.message.includes("permission")) {
+          throw new Error("Permission denied. Please check your moderator permissions in Supabase RLS policies.");
+        }
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error("Recipe not found or you don't have permission to delete it. Check Supabase RLS policies.");
+      }
 
       alert("🗑 Recipe deleted successfully");
       await fetchRecipes();
     } catch (err) {
       console.error("Error deleting recipe:", err);
-      alert("Failed to delete recipe: " + (err.message || "Unknown error"));
+      alert("Failed to delete recipe:\n\n" + err.message + "\n\nCheck the console for details.");
     } finally {
       setActionLoading(false);
     }
@@ -339,6 +415,7 @@ function ModeratorDashboard() {
               onChange={e => setRejectionReason(e.target.value)}
               rows="4"
               className="rejection-textarea"
+              placeholder="Enter rejection reason..."
               disabled={actionLoading}
             />
             <div className="modal-actions">
