@@ -1,94 +1,79 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "../supabase";
+import { supabase } from "../supabaseClient";
+import { downloadRecipePDF } from "../utils/downloadRecipePDF";
 import "../styles/MyRecipes.css";
 
 function MyRecipes() {
   const navigate = useNavigate();
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
-    fetchMyRecipes();
+    fetchFavorites();
+    const handleVisibilityChange = () => {};
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  const fetchMyRecipes = async () => {
+  const fetchFavorites = async () => {
     setLoading(true);
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        console.error("Not logged in:", userError);
-        navigate("/login");
-        return;
-      }
+      if (userError || !user) { navigate("/login"); return; }
 
-      const { data, error } = await supabase
-        .from("recipes")
-        .select("*")
-        .eq("owner_id", user.id)
+      const { data: savedData, error: savedError } = await supabase
+        .from("saved_recipes")
+        .select("recipe_id")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching recipes:", error);
-      } else {
-        setRecipes(data || []);
-      }
+      if (savedError) { setRecipes([]); return; }
+
+      const ids = (savedData || []).map((r) => r.recipe_id).filter(Boolean);
+      if (ids.length === 0) { setRecipes([]); return; }
+
+      const { data: recipeData, error: recipeError } = await supabase
+        .from("recipes")
+        .select("*")
+        .in("id", ids);
+
+      if (recipeError) { setRecipes([]); }
+      else { setRecipes(recipeData || []); }
     } catch (err) {
       console.error("Error:", err);
+      setRecipes([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (recipeId, recipeTitle) => {
-    if (!window.confirm(`Delete "${recipeTitle}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    setDeleteLoading(recipeId);
+  const handleUnsave = async (recipeId, recipeTitle) => {
+    if (!window.confirm(`Remove "${recipeTitle}" from your favorites?`)) return;
     try {
-      // Get recipe to find image
-      const recipe = recipes.find(r => r.id === recipeId);
-      
-      // Delete image from storage if exists
-      if (recipe && recipe.image_url) {
-        const urlParts = recipe.image_url.split('/recipes/');
-        if (urlParts[1]) {
-          const filePath = urlParts[1].split('?')[0];
-          await supabase.storage.from('recipes').remove([filePath]);
-        }
-      }
-
-      // Delete recipe from database
+      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase
-        .from("recipes")
+        .from("saved_recipes")
         .delete()
-        .eq("id", recipeId);
-
+        .eq("user_id", user.id)
+        .eq("recipe_id", recipeId);
       if (error) throw error;
-
-      alert("Recipe deleted successfully");
-      setRecipes(recipes.filter(r => r.id !== recipeId));
+      setRecipes((prev) => prev.filter((r) => r.id !== recipeId));
     } catch (err) {
-      console.error("Error deleting recipe:", err);
-      alert("Failed to delete recipe: " + err.message);
-    } finally {
-      setDeleteLoading(null);
+      alert("Failed to remove: " + err.message);
     }
   };
 
-  const filteredRecipes = filter === "all" 
-    ? recipes 
-    : recipes.filter(r => r.status === filter);
-
-  const stats = {
-    total: recipes.length,
-    approved: recipes.filter(r => r.status === "approved").length,
-    pending: recipes.filter(r => r.status === "pending").length,
-    rejected: recipes.filter(r => r.status === "rejected").length,
+  const handleDownloadPDF = async (recipe) => {
+    setDownloadingId(recipe.id);
+    try {
+      await downloadRecipePDF(recipe);
+    } catch (err) {
+      alert("Failed to generate PDF: " + err.message);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   if (loading) {
@@ -96,7 +81,7 @@ function MyRecipes() {
       <div className="my-recipes-page">
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Loading your recipes...</p>
+          <p>Loading your favorites...</p>
         </div>
       </div>
     );
@@ -107,96 +92,33 @@ function MyRecipes() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1>My Recipes</h1>
-          <p className="subtitle">Manage all your submitted recipes</p>
-        </div>
-        <Link to="/add-recipe" className="add-recipe-btn">
-          ➕ Add New Recipe
-        </Link>
-      </div>
-
-      {/* Stats */}
-      <div className="stats-bar">
-        <div className="stat-item">
-          <span className="stat-number">{stats.total}</span>
-          <span className="stat-label">Total</span>
-        </div>
-        <div className="stat-item approved">
-          <span className="stat-number">{stats.approved}</span>
-          <span className="stat-label">Approved</span>
-        </div>
-        <div className="stat-item pending">
-          <span className="stat-number">{stats.pending}</span>
-          <span className="stat-label">Pending</span>
-        </div>
-        <div className="stat-item rejected">
-          <span className="stat-number">{stats.rejected}</span>
-          <span className="stat-label">Rejected</span>
+          <h1>❤️ My Favorites</h1>
+          <p className="subtitle">Recipes you've saved for later</p>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="filter-section">
-        <button 
-          className={`filter-btn ${filter === "all" ? "active" : ""}`}
-          onClick={() => setFilter("all")}
-        >
-          All ({stats.total})
-        </button>
-        <button 
-          className={`filter-btn ${filter === "approved" ? "active" : ""}`}
-          onClick={() => setFilter("approved")}
-        >
-          Approved ({stats.approved})
-        </button>
-        <button 
-          className={`filter-btn ${filter === "pending" ? "active" : ""}`}
-          onClick={() => setFilter("pending")}
-        >
-          Pending ({stats.pending})
-        </button>
-        {stats.rejected > 0 && (
-          <button 
-            className={`filter-btn ${filter === "rejected" ? "active" : ""}`}
-            onClick={() => setFilter("rejected")}
-          >
-            Rejected ({stats.rejected})
-          </button>
-        )}
-      </div>
-
-      {/* Recipes List */}
-      {filteredRecipes.length === 0 ? (
+      {/* Empty or Grid */}
+      {recipes.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🍳</div>
-          <h2>No {filter === "all" ? "" : filter} recipes</h2>
-          {filter === "all" ? (
-            <>
-              <p>You haven't created any recipes yet</p>
-              <Link to="/add-recipe" className="empty-action-btn">
-                Create Your First Recipe
-              </Link>
-            </>
-          ) : (
-            <p>You don't have any {filter} recipes</p>
-          )}
+          <div className="empty-icon">❤️</div>
+          <h2>No favorites yet</h2>
+          <p>Save recipes you love and they'll appear here</p>
+          <Link to="/" className="empty-action-btn">Browse Recipes</Link>
         </div>
       ) : (
         <div className="recipe-grid">
-          {filteredRecipes.map((recipe) => (
-            <div key={recipe.id} className={`recipe-card ${recipe.status || 'pending'}`}>
+          {recipes.map((recipe) => (
+            <div key={recipe.id} className={`recipe-card ${recipe.status || "pending"}`}>
               <Link to={`/recipe/${recipe.id}`} className="recipe-image-link">
                 <div className="recipe-image-container">
-                  <img 
+                  <img
                     src={recipe.image_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='300' height='200' fill='%23e0e0e0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='18' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E"}
                     alt={recipe.title}
                     className="recipe-thumb"
                     loading="lazy"
                   />
-                  <div className={`status-badge ${recipe.status || 'pending'}`}>
-                    {recipe.status === 'approved' ? '✓ Live' : 
-                     recipe.status === 'rejected' ? '✗ Rejected' : 
-                     '⏳ Review'}
+                  <div className={`status-badge ${recipe.status || "pending"}`}>
+                    {recipe.status === "approved" ? "✓ Live" : recipe.status === "rejected" ? "✗ Rejected" : "⏳ Review"}
                   </div>
                 </div>
               </Link>
@@ -205,52 +127,50 @@ function MyRecipes() {
                 <Link to={`/recipe/${recipe.id}`} className="recipe-title-link">
                   <h3 className="recipe-title">{recipe.title}</h3>
                 </Link>
-                
+
                 <div className="recipe-meta">
-                  <span className="recipe-category">{recipe.category || 'Uncategorized'}</span>
+                  <span className="recipe-category">{recipe.category || "Uncategorized"}</span>
                   {recipe.cuisine && (
-                    <>
-                      <span className="separator">•</span>
-                      <span className="recipe-cuisine">{recipe.cuisine}</span>
-                    </>
+                    <><span className="separator">•</span><span className="recipe-cuisine">{recipe.cuisine}</span></>
                   )}
                 </div>
 
                 <div className="recipe-stats">
-                  {recipe.rating > 0 && (
-                    <span className="rating">★ {recipe.rating.toFixed(1)}</span>
-                  )}
+                  {recipe.rating > 0 && <span className="rating">★ {recipe.rating.toFixed(1)}</span>}
                   <span className="date">
-                    {new Date(recipe.created_at).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                    {new Date(recipe.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                 </div>
 
-                {recipe.status === 'rejected' && recipe.rejection_reason && (
-                  <div className="rejection-message">
-                    <strong>Rejection reason:</strong>
-                    <p>{recipe.rejection_reason}</p>
-                  </div>
-                )}
-
                 <div className="recipe-actions">
-                  <Link 
-                    to={`/recipe/${recipe.id}`} 
-                    className="action-btn view"
-                    target="_blank"
-                  >
+                  <Link to={`/recipe/${recipe.id}`} className="action-btn view" target="_blank">
                     👁 View
                   </Link>
-                  {/* Note: Add edit functionality later if needed */}
-                  <button 
-                    onClick={() => handleDelete(recipe.id, recipe.title)}
-                    className="action-btn delete"
-                    disabled={deleteLoading === recipe.id}
+
+                  {/* PDF Download Button */}
+                  <button
+                    onClick={() => handleDownloadPDF(recipe)}
+                    className="action-btn pdf-download"
+                    disabled={downloadingId === recipe.id}
+                    title="Download as PDF"
                   >
-                    {deleteLoading === recipe.id ? '⏳' : '🗑'} Delete
+                    {downloadingId === recipe.id ? (
+                      <>⏳ Generating...</>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                          <line x1="12" y1="18" x2="12" y2="12"/>
+                          <polyline points="9 15 12 18 15 15"/>
+                        </svg>
+                        PDF
+                      </>
+                    )}
+                  </button>
+
+                  <button onClick={() => handleUnsave(recipe.id, recipe.title)} className="action-btn delete">
+                    🗑 Remove
                   </button>
                 </div>
               </div>

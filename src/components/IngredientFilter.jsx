@@ -1,71 +1,50 @@
 import { useState, useEffect } from "react";
 import "../styles/IngredientFilter.css";
 
-/* 🔹 IMAGE MAP */
-const ingredientImageMap = {
-  chicken: "/ingredients/chicken.jpg",
-  beef: "/ingredients/beef.jpg",
-  pork: "/ingredients/pork.jpg",
-  egg: "/ingredients/egg.jpg",
-  onion: "/ingredients/onion.jpg",
-  garlic: "/ingredients/garlic.jpg",
-  tomato: "/ingredients/tomato.jpg",
-  rice: "/ingredients/rice.jpg",
-  cheese: "/ingredients/cheese.jpg",
-  milk: "/ingredients/milk.jpg",
+const getIngredientImage = (ingredient) => {
+  const imageMap = {
+    chicken: "/ingredients/chicken.jpg",
+    beef: "/ingredients/beef.jpg",
+    pork: "/ingredients/pork.jpg",
+    egg: "/ingredients/egg.jpg",
+    onion: "/ingredients/onion.jpg",
+    garlic: "/ingredients/garlic.jpg",
+    tomato: "/ingredients/tomato.jpg",
+    rice: "/ingredients/rice.jpg",
+    cheese: "/ingredients/cheese.jpg",
+    milk: "/ingredients/milk.jpg",
+  };
+  return imageMap[ingredient] || "/ingredients/default.jpg";
 };
-
-const getIngredientImage = (ingredient) =>
-  ingredientImageMap[ingredient] || "/ingredients/default.jpg";
 
 function IngredientFilter({ recipes = [], onFilteredRecipes }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [allIngredients, setAllIngredients] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  /* 🔹 Extract ingredients safely */
   useEffect(() => {
     if (!Array.isArray(recipes)) return;
-
     const ingredientsSet = new Set();
-
     recipes.forEach((recipe) => {
       recipe?.ingredients?.forEach((ingredient) => {
         const cleaned = ingredient
           .toLowerCase()
           .replace(/[0-9]/g, "")
-          .replace(
-            /cup|tablespoon|teaspoon|pound|ounce|gram|kg|lb|oz|tbsp|tsp/gi,
-            ""
-          )
-          .replace(
-            /minced|chopped|diced|sliced|crushed|ground/gi,
-            ""
-          )
+          .replace(/cup|tablespoon|teaspoon|pound|ounce|gram|kg|lb|oz|tbsp|tsp/gi, "")
+          .replace(/minced|chopped|diced|sliced|crushed|ground/gi, "")
           .trim();
-
         if (cleaned) ingredientsSet.add(cleaned);
       });
     });
-
     setAllIngredients([...ingredientsSet].sort());
   }, [recipes]);
 
-  /* 🔹 Filter recipes by search term */
   useEffect(() => {
     if (typeof onFilteredRecipes !== "function") return;
-
-    if (!searchTerm) {
-      onFilteredRecipes(recipes);
-      return;
-    }
-
+    if (!searchTerm) { onFilteredRecipes(recipes); return; }
     const filtered = recipes.filter((recipe) =>
-      recipe?.ingredients?.some((ing) =>
-        ing.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      recipe?.ingredients?.some((ing) => ing.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-
     onFilteredRecipes(filtered);
   }, [searchTerm, recipes, onFilteredRecipes]);
 
@@ -76,11 +55,7 @@ function IngredientFilter({ recipes = [], onFilteredRecipes }) {
   return (
     <div className="ingredient-filter">
       <div className="filter-header">
-        <button
-          className="filter-toggle"
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-        >
+        <button className="filter-toggle" type="button" onClick={() => setIsOpen((prev) => !prev)}>
           <span className="filter-icon">🔍</span>
           <span>Filter by Ingredients</span>
           <span className={`arrow ${isOpen ? "open" : ""}`}>▼</span>
@@ -99,7 +74,6 @@ function IngredientFilter({ recipes = [], onFilteredRecipes }) {
             />
           </div>
 
-          {/* 🔹 Image results */}
           {searchTerm && filteredIngredients.length > 0 && (
             <div className="ingredient-image-grid">
               {filteredIngredients.slice(0, 8).map((ingredient) => (
@@ -112,10 +86,9 @@ function IngredientFilter({ recipes = [], onFilteredRecipes }) {
                     src={getIngredientImage(ingredient)}
                     alt={ingredient}
                     className="ingredient-card-img"
+                    onError={(e) => { e.target.src = "/ingredients/default.jpg"; }}
                   />
-                  <span className="ingredient-card-label">
-                    {ingredient}
-                  </span>
+                  <span className="ingredient-card-label">{ingredient}</span>
                 </div>
               ))}
             </div>
@@ -123,8 +96,7 @@ function IngredientFilter({ recipes = [], onFilteredRecipes }) {
 
           <div className="filter-footer">
             <p className="results-count">
-              Showing {recipes.length} recipe
-              {recipes.length !== 1 ? "s" : ""}
+              Showing {recipes.length} recipe{recipes.length !== 1 ? "s" : ""}
             </p>
           </div>
         </div>

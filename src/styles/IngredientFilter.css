@@ -1,3 +1,5 @@
+/* IngredientFilter.css — Updated with bigger, wider cards */
+
 .ingredient-filter {
   background: white;
   border-radius: 12px;
@@ -27,9 +29,7 @@
   flex: 1;
 }
 
-.filter-icon {
-  font-size: 20px;
-}
+.filter-icon { font-size: 20px; }
 
 .filter-count {
   background: #f97316;
@@ -47,9 +47,7 @@
   font-size: 12px;
 }
 
-.arrow.open {
-  transform: rotate(180deg);
-}
+.arrow.open { transform: rotate(180deg); }
 
 .clear-btn {
   background: #fee2e2;
@@ -62,10 +60,7 @@
   cursor: pointer;
   transition: background 0.2s;
 }
-
-.clear-btn:hover {
-  background: #fecaca;
-}
+.clear-btn:hover { background: #fecaca; }
 
 .filter-content {
   border-top: 1px solid #e5e7eb;
@@ -74,19 +69,11 @@
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.search-box {
-  margin-bottom: 20px;
-}
+.search-box { margin-bottom: 20px; }
 
 .ingredient-search {
   width: 100%;
@@ -96,13 +83,10 @@
   font-size: 14px;
   transition: border-color 0.2s;
 }
-
 .ingredient-search:focus {
   outline: none;
   border-color: #f97316;
 }
-
-
 
 .no-results {
   text-align: center;
@@ -124,12 +108,11 @@
   font-size: 14px;
 }
 
-/* 🔹 IMAGE GRID */
-
+/* ✅ BIGGER, WIDER ingredient cards */
 .ingredient-image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* wider: was 140px */
+  gap: 20px;
   margin: 16px 0 24px;
 }
 
@@ -137,7 +120,7 @@
   position: relative;
   background: #ffffff;
   border-radius: 18px;
-  padding: 12px;
+  padding: 16px 14px;  /* more padding */
   text-align: center;
   cursor: pointer;
   border: 2px solid transparent;
@@ -146,8 +129,8 @@
 }
 
 .ingredient-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+  transform: translateY(-5px);
+  box-shadow: 0 14px 32px rgba(0,0,0,0.22);
 }
 
 .ingredient-card.selected {
@@ -158,23 +141,22 @@
 
 .ingredient-card-img {
   width: 100%;
-  height: 150px;
+  height: 180px;    /* taller: was 150px */
   object-fit: cover;
   border-radius: 14px;
-  background: #ffffff;
+  background: #f3f4f6;
 }
 
 .ingredient-card-label {
   display: block;
-  margin-top: 10px;
+  margin-top: 12px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;   /* slightly larger text */
   text-transform: capitalize;
   color: #1f2937;
 }
 
-/* 🔹 SELECTED CHECK BADGE */
-
+/* Selected check badge */
 .selected-check {
   position: absolute;
   top: 10px;
@@ -192,30 +174,19 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-/* 🔹 SCROLLBAR */
-
-.ingredients-list::-webkit-scrollbar {
-  width: 8px;
-}
-
-.ingredients-list::-webkit-scrollbar-track {
-  background: #f3f4f6;
-  border-radius: 4px;
-}
-
-.ingredients-list::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 4px;
-}
-
-.ingredients-list::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
+/* Scrollbar */
+.ingredients-list::-webkit-scrollbar { width: 8px; }
+.ingredients-list::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 4px; }
+.ingredients-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+.ingredients-list::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
 @media (max-width: 768px) {
-  .ingredients-list {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    max-height: 300px;
+  .ingredient-image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .ingredient-card-img {
+    height: 140px;
   }
 
   .filter-header {
@@ -224,7 +195,5 @@
     gap: 12px;
   }
 
-  .clear-btn {
-    width: 100%;
-  }
+  .clear-btn { width: 100%; }
 }

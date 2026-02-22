@@ -87,47 +87,6 @@ function HomePage() {
       </div>
 
       <div className="recipe-container">
-        {/* Filters */}
-        {recipes.length > 0 && (
-          <div className="filters-bar">
-            <select
-              value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-              className="filter-select"
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>
-                  {cat === "all" ? "All Categories" : cat}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filters.cuisine}
-              onChange={(e) => setFilters({ ...filters, cuisine: e.target.value })}
-              className="filter-select"
-            >
-              {cuisines.map(cui => (
-                <option key={cui} value={cui}>
-                  {cui === "all" ? "All Cuisines" : cui}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filters.difficulty}
-              onChange={(e) => setFilters({ ...filters, difficulty: e.target.value })}
-              className="filter-select"
-            >
-              <option value="all">All Levels</option>
-              <option value="Easy">Easy</option>
-              <option value="Medium">Medium</option>
-              <option value="Hard">Hard</option>
-            </select>
-          </div>
-        )}
-
-        
 
         {/* Recipe Grid */}
         <div className="recipe-grid">
