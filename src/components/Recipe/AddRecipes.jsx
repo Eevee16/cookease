@@ -18,9 +18,6 @@ function AddRecipe() {
 
   useEffect(() => {
     if (!loading && !user) navigate("/login", { state: { from: location } });
-    const handleVisibility = () => {};
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [user, loading, navigate, location]);
 
   const categoryOptions = ["Breakfast","Lunch","Dinner","Dessert","Snacks","Appetizer","Soup","Salad","Beverage","Side Dish"];
@@ -40,28 +37,23 @@ function AddRecipe() {
   const [fieldErrors, setFieldErrors] = useState({});
 
   const [ingredientSearch, setIngredientSearch] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
   const [allIngredients, setAllIngredients] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const searchDebounce = useRef(null);
 
-  // ✅ Load all ingredients on mount
+  const SHOW_DEFAULT = 8;
+
+  // Load all ingredients on mount
   useEffect(() => {
     const loadAll = async () => {
       setSearchLoading(true);
       try {
         const { data, error } = await supabase
           .from("ingredients")
-          .select("id, name, image_url, image")
+          .select("id, name, image_url")
           .order("name", { ascending: true })
-          .limit(100);
+          .limit(200);
         if (error) throw error;
-        const normalized = (data || []).map((i) => ({
-          ...i,
-          image_url: i.image_url || i.image || "",
-        }));
-        setAllIngredients(normalized);
-        setSearchResults(normalized.slice(0, 12));
+        setAllIngredients(data || []);
       } catch (e) {
         console.error("Error loading ingredients:", e);
       } finally {
@@ -71,18 +63,10 @@ function AddRecipe() {
     loadAll();
   }, []);
 
-  // ✅ Filter locally as user types — no extra DB call needed
-  useEffect(() => {
-    if (!ingredientSearch.trim()) {
-      setSearchResults(allIngredients.slice(0, 12));
-      return;
-    }
-    const term = ingredientSearch.toLowerCase();
-    const filtered = allIngredients.filter((i) =>
-      i.name.toLowerCase().includes(term)
-    );
-    setSearchResults(filtered);
-  }, [ingredientSearch, allIngredients]);
+  // ✅ Show only 8 by default, filter when searching
+  const searchResults = ingredientSearch.trim()
+    ? allIngredients.filter((i) => i.name.toLowerCase().includes(ingredientSearch.toLowerCase()))
+    : allIngredients.slice(0, SHOW_DEFAULT);
 
   const addIngredientFromSearch = (ingredient) => {
     const alreadyAdded = formData.ingredients.some(
@@ -94,7 +78,7 @@ function AddRecipe() {
       ingredients: [...prev.ingredients, {
         id: ingredient.id,
         name: ingredient.name,
-        image_url: ingredient.image_url || ingredient.image || "",
+        image_url: ingredient.image_url || "",
         amount: ""
       }]
     }));
@@ -133,6 +117,13 @@ function AddRecipe() {
     if (fieldErrors[e.target.name]) setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
   };
 
+  // ✅ Numbers only for prep/cook time
+  const handleTimeChange = (e) => {
+    const val = e.target.value.replace(/\D/g, "");
+    setFormData({ ...formData, [e.target.name]: val });
+    if (fieldErrors[e.target.name]) setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
+  };
+
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -142,7 +133,7 @@ function AddRecipe() {
       const compressed = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true });
       setImageFile(compressed);
       setImagePreview(URL.createObjectURL(compressed));
-    } catch (error) {
+    } catch {
       alert("Failed to process image. Please try another file.");
     }
   };
@@ -302,13 +293,34 @@ function AddRecipe() {
                 </div>
               </div>
               <div className="form-row">
+                {/* ✅ Numbers only — inputmode numeric, pattern, no letters */}
                 <div className="form-group">
                   <label htmlFor="prepTime">Prep Time (minutes)</label>
-                  <input type="number" id="prepTime" name="prepTime" value={formData.prepTime} onChange={handleChange} placeholder="e.g., 15" min="0" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    id="prepTime"
+                    name="prepTime"
+                    value={formData.prepTime}
+                    onChange={handleTimeChange}
+                    placeholder="e.g., 15"
+                    className={fieldErrors.prepTime ? "error-input" : ""}
+                  />
                 </div>
                 <div className="form-group">
                   <label htmlFor="cookTime">Cook Time (minutes)</label>
-                  <input type="number" id="cookTime" name="cookTime" value={formData.cookTime} onChange={handleChange} placeholder="e.g., 30" min="0" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    id="cookTime"
+                    name="cookTime"
+                    value={formData.cookTime}
+                    onChange={handleTimeChange}
+                    placeholder="e.g., 30"
+                    className={fieldErrors.cookTime ? "error-input" : ""}
+                  />
                 </div>
               </div>
             </div>
@@ -325,14 +337,14 @@ function AddRecipe() {
                 <input
                   type="text"
                   className="ingredient-search-input"
-                  placeholder="🔍 Search ingredients (e.g. chicken, garlic)..."
+                  placeholder="🔍 Search ingredients..."
                   value={ingredientSearch}
                   onChange={(e) => setIngredientSearch(e.target.value)}
                 />
                 {searchLoading && <div className="search-loading-dots">Loading ingredients...</div>}
 
-                {/* ✅ Always visible ingredient grid */}
-                {searchResults.length > 0 && (
+                {/* ✅ Fixed 4-column grid, cards don't shrink */}
+                {!searchLoading && (
                   <div className="ingredient-search-results">
                     {searchResults.map((ing) => {
                       const isAdded = formData.ingredients.some(i => i.name?.toLowerCase() === ing.name.toLowerCase());
@@ -353,20 +365,20 @@ function AddRecipe() {
                         </div>
                       );
                     })}
+                    {!ingredientSearch && (
+                      <p className="ingredient-search-hint">Type to search all {allIngredients.length} ingredients</p>
+                    )}
+                    {ingredientSearch && searchResults.length === 0 && (
+                      <p className="no-ingredient-results">No results for "{ingredientSearch}"</p>
+                    )}
                   </div>
-                )}
-
-                {ingredientSearch && !searchLoading && searchResults.length === 0 && (
-                  <div className="no-ingredient-results">No ingredients found for "{ingredientSearch}"</div>
                 )}
               </div>
 
               {/* Selected Ingredient Cards */}
               {formData.ingredients.length > 0 && (
                 <>
-                  <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#374151", margin: "20px 0 8px" }}>
-                    Selected ({formData.ingredients.length})
-                  </h3>
+                  <h3 className="selected-ingredients-label">Selected ({formData.ingredients.length})</h3>
                   <div className="added-ingredients-grid">
                     {formData.ingredients.map((ing, idx) => (
                       <div key={idx} className="added-ingredient-card">

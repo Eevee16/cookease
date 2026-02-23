@@ -21,7 +21,6 @@ function RecipeDetail() {
   const [isSaved, setIsSaved] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const [servingsMultiplier, setServingsMultiplier] = useState(1);
 
   // Fetch recipe from Supabase if not local
   useEffect(() => {
@@ -65,57 +64,47 @@ function RecipeDetail() {
     checkIfSaved();
   }, [id]);
 
-  // Track recipe view
+  // ✅ Fixed view counter — runs once per session per recipe
   useEffect(() => {
     if (localMatch || !id || hasTrackedView.current) return;
-    const trackRecipeView = async () => {
-      const sessionKey = `viewed_recipe_${id}`;
-      if (sessionStorage.getItem(sessionKey)) return;
+    const sessionKey = `viewed_recipe_${id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+
+    hasTrackedView.current = true; // prevent double run
+
+    const trackView = async () => {
       try {
-        const { data: recipeData, error: fetchError } = await supabase
-          .from("recipes")
-          .select("view_count")
-          .eq("id", id)
-          .single();
-        if (fetchError) throw fetchError;
-        const { error: updateError } = await supabase
-          .from("recipes")
-          .update({ view_count: (recipeData.view_count || 0) + 1 })
-          .eq("id", id);
-        if (!updateError) {
+        const { error } = await supabase.rpc("increment_view_count", { recipe_id: id });
+        if (!error) sessionStorage.setItem(sessionKey, "true");
+      } catch {
+        // fallback: manual increment
+        try {
+          const { data } = await supabase.from("recipes").select("view_count").eq("id", id).single();
+          await supabase.from("recipes").update({ view_count: (data?.view_count || 0) + 1 }).eq("id", id);
           sessionStorage.setItem(sessionKey, "true");
-          hasTrackedView.current = true;
+        } catch (err) {
+          console.error("Error tracking view:", err);
         }
-      } catch (err) {
-        console.error("Error tracking view:", err);
       }
     };
-    trackRecipeView();
+    trackView();
   }, [id, localMatch]);
 
   const toggleIngredient = (index) => {
     setCheckedIngredients((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
-  // Save / Unsave
   const handleSaveRecipe = async () => {
     setSaveLoading(true);
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) { alert("Please log in to save recipes."); navigate("/login"); return; }
-
       if (isSaved) {
-        const { error } = await supabase
-          .from("saved_recipes")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("recipe_id", id);
+        const { error } = await supabase.from("saved_recipes").delete().eq("user_id", user.id).eq("recipe_id", id);
         if (error) throw error;
         setIsSaved(false);
       } else {
-        const { error } = await supabase
-          .from("saved_recipes")
-          .insert([{ user_id: user.id, recipe_id: id }]);
+        const { error } = await supabase.from("saved_recipes").insert([{ user_id: user.id, recipe_id: id }]);
         if (error) throw error;
         setIsSaved(true);
       }
@@ -126,16 +115,11 @@ function RecipeDetail() {
     }
   };
 
-  // Download PDF — only available when saved
   const handleDownloadPDF = async () => {
     setPdfLoading(true);
-    try {
-      await downloadRecipePDF(recipe);
-    } catch (err) {
-      alert("Failed to generate PDF: " + err.message);
-    } finally {
-      setPdfLoading(false);
-    }
+    try { await downloadRecipePDF(recipe); }
+    catch (err) { alert("Failed to generate PDF: " + err.message); }
+    finally { setPdfLoading(false); }
   };
 
   const handleShare = async () => {
@@ -150,11 +134,6 @@ function RecipeDetail() {
   };
 
   const handlePrint = () => window.print();
-
-  const adjustServings = (increment) => {
-    const newMultiplier = servingsMultiplier + increment;
-    if (newMultiplier >= 0.5 && newMultiplier <= 10) setServingsMultiplier(newMultiplier);
-  };
 
   const formatTime = (minutes) => {
     if (!minutes) return "N/A";
@@ -215,7 +194,6 @@ function RecipeDetail() {
   const instructions = parseInstructions(recipe.instructions);
   const rating = recipe.rating || 0;
   const baseServings = recipe.servings || 4;
-  const adjustedServings = Math.round(baseServings * servingsMultiplier);
   const isOwner = userData && recipe.owner_id === userData.id;
 
   return (
@@ -254,9 +232,7 @@ function RecipeDetail() {
             <div className="recipe-category">
               {recipe.cuisine || "World"} • {recipe.category || "Main Course"}
             </div>
-
             <h1 className="detail-title">{recipe.title}</h1>
-
             <div className="author-info">
               <div className="author-avatar">
                 {recipe.owner_name ? recipe.owner_name[0].toUpperCase() : "U"}
@@ -266,22 +242,17 @@ function RecipeDetail() {
                 <p className="author-name">{recipe.owner_name || "Anonymous"}</p>
               </div>
             </div>
-
             <p className="recipe-description">
               {recipe.description || "A delicious recipe that you'll love to make and share with family and friends."}
             </p>
 
-            {/* Info Cards */}
+            {/* ✅ Info Cards — no plus/minus servings adjuster */}
             <div className="info-grid">
               <div className="info-card">
                 <span className="info-icon">🍽</span>
                 <div className="info-content">
                   <span className="info-label">Servings</span>
-                  <div className="servings-adjuster">
-                    <button onClick={() => adjustServings(-0.5)} className="servings-btn" disabled={servingsMultiplier <= 0.5}>−</button>
-                    <span className="info-value">{adjustedServings}</span>
-                    <button onClick={() => adjustServings(0.5)} className="servings-btn" disabled={servingsMultiplier >= 10}>+</button>
-                  </div>
+                  <span className="info-value">{baseServings}</span>
                 </div>
               </div>
               <div className="info-card">
@@ -307,7 +278,6 @@ function RecipeDetail() {
               </div>
             </div>
 
-            {/* Save + Download PDF buttons */}
             <div className="recipe-btn-row">
               <button
                 className={`save-btn ${isSaved ? "saved" : ""}`}
@@ -316,7 +286,11 @@ function RecipeDetail() {
               >
                 {saveLoading ? "⏳ Saving..." : isSaved ? "✓ Saved" : "🔖 Save Recipe"}
               </button>
-
+              {isSaved && (
+                <button className="pdf-btn" onClick={handleDownloadPDF} disabled={pdfLoading}>
+                  {pdfLoading ? "⏳ Generating..." : "⬇ Download PDF"}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -337,14 +311,7 @@ function RecipeDetail() {
       <div className="detail-main">
         {activeTab === "ingredients" && (
           <div className="content-card">
-            <div className="section-header">
-              <h2 className="section-title">What You'll Need</h2>
-              {servingsMultiplier !== 1 && (
-                <button className="reset-servings-btn" onClick={() => setServingsMultiplier(1)}>
-                  Reset to original ({baseServings} servings)
-                </button>
-              )}
-            </div>
+            <h2 className="section-title">What You'll Need</h2>
             <div className="ingredients-list">
               {ingredients.length > 0 ? (
                 ingredients.map((ingredient, index) => (
