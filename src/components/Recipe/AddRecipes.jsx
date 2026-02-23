@@ -18,8 +18,6 @@ function AddRecipe() {
 
   useEffect(() => {
     if (!loading && !user) navigate("/login", { state: { from: location } });
-
-    // ✅ Prevent page reload on alt-tab
     const handleVisibility = () => {};
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
@@ -31,10 +29,8 @@ function AddRecipe() {
 
   const [formData, setFormData] = useState({
     title: "", category: "", cuisine: "", difficulty: "",
-    prepTime: "", cookTime: "",
-    servings: "1", // ✅ Default servings = 1
-    ingredients: [],
-    instructions: [""]
+    prepTime: "", cookTime: "", servings: "1",
+    ingredients: [], instructions: [""]
   });
 
   const [imageFile, setImageFile] = useState(null);
@@ -43,48 +39,65 @@ function AddRecipe() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  // ✅ Ingredient search state
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [allIngredients, setAllIngredients] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchDebounce = useRef(null);
 
-  // ✅ Search ingredients from DB
+  // ✅ Load all ingredients on mount
   useEffect(() => {
-    if (!ingredientSearch.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    clearTimeout(searchDebounce.current);
-    searchDebounce.current = setTimeout(async () => {
+    const loadAll = async () => {
       setSearchLoading(true);
       try {
         const { data, error } = await supabase
           .from("ingredients")
-          .select("id, name, image_url")
-          .ilike("name", `%${ingredientSearch}%`)
-          .limit(12);
-        if (!error) setSearchResults(data || []);
+          .select("id, name, image_url, image")
+          .order("name", { ascending: true })
+          .limit(100);
+        if (error) throw error;
+        const normalized = (data || []).map((i) => ({
+          ...i,
+          image_url: i.image_url || i.image || "",
+        }));
+        setAllIngredients(normalized);
+        setSearchResults(normalized.slice(0, 12));
       } catch (e) {
-        console.error("Ingredient search error:", e);
+        console.error("Error loading ingredients:", e);
       } finally {
         setSearchLoading(false);
       }
-    }, 300);
-  }, [ingredientSearch]);
+    };
+    loadAll();
+  }, []);
+
+  // ✅ Filter locally as user types — no extra DB call needed
+  useEffect(() => {
+    if (!ingredientSearch.trim()) {
+      setSearchResults(allIngredients.slice(0, 12));
+      return;
+    }
+    const term = ingredientSearch.toLowerCase();
+    const filtered = allIngredients.filter((i) =>
+      i.name.toLowerCase().includes(term)
+    );
+    setSearchResults(filtered);
+  }, [ingredientSearch, allIngredients]);
 
   const addIngredientFromSearch = (ingredient) => {
-    // Avoid duplicates
     const alreadyAdded = formData.ingredients.some(
       (i) => i.name?.toLowerCase() === ingredient.name.toLowerCase()
     );
     if (alreadyAdded) return;
     setFormData((prev) => ({
       ...prev,
-      ingredients: [...prev.ingredients, { id: ingredient.id, name: ingredient.name, image_url: ingredient.image_url, amount: "" }]
+      ingredients: [...prev.ingredients, {
+        id: ingredient.id,
+        name: ingredient.name,
+        image_url: ingredient.image_url || ingredient.image || "",
+        amount: ""
+      }]
     }));
-    setIngredientSearch("");
-    setSearchResults([]);
     if (fieldErrors.ingredients) setFieldErrors({ ...fieldErrors, ingredients: "" });
   };
 
@@ -253,14 +266,13 @@ function AddRecipe() {
               <h2>Basic Information</h2>
               <div className="form-group">
                 <label htmlFor="title">Recipe Title *</label>
-                <input type="text" id="title" name="title" value={formData.title} onChange={handleChange} placeholder="e.g., Chicken Adobo" required className={fieldErrors.title ? "error-input" : ""} />
+                <input type="text" id="title" name="title" value={formData.title} onChange={handleChange} placeholder="e.g., Chicken Adobo" className={fieldErrors.title ? "error-input" : ""} />
                 {fieldErrors.title && <span className="error">{fieldErrors.title}</span>}
               </div>
-
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="category">Category *</label>
-                  <select id="category" name="category" value={formData.category} onChange={handleChange} required className={fieldErrors.category ? "error-input" : ""}>
+                  <select id="category" name="category" value={formData.category} onChange={handleChange} className={fieldErrors.category ? "error-input" : ""}>
                     <option value="">Select category</option>
                     {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -268,75 +280,79 @@ function AddRecipe() {
                 </div>
                 <div className="form-group">
                   <label htmlFor="cuisine">Cuisine *</label>
-                  <select id="cuisine" name="cuisine" value={formData.cuisine} onChange={handleChange} required className={fieldErrors.cuisine ? "error-input" : ""}>
+                  <select id="cuisine" name="cuisine" value={formData.cuisine} onChange={handleChange} className={fieldErrors.cuisine ? "error-input" : ""}>
                     <option value="">Select cuisine</option>
                     {cuisineOptions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   {fieldErrors.cuisine && <span className="error">{fieldErrors.cuisine}</span>}
                 </div>
               </div>
-
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="difficulty">Difficulty *</label>
-                  <select id="difficulty" name="difficulty" value={formData.difficulty} onChange={handleChange} required className={fieldErrors.difficulty ? "error-input" : ""}>
+                  <select id="difficulty" name="difficulty" value={formData.difficulty} onChange={handleChange} className={fieldErrors.difficulty ? "error-input" : ""}>
                     <option value="">Select difficulty</option>
                     {difficultyOptions.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   {fieldErrors.difficulty && <span className="error">{fieldErrors.difficulty}</span>}
                 </div>
                 <div className="form-group">
-                  <label htmlFor="servings">Servings <span className="field-note">Default is 1</span></label>
+                  <label htmlFor="servings">Servings</label>
                   <input type="number" id="servings" name="servings" value={formData.servings} onChange={handleChange} min="1" max="100" />
                 </div>
               </div>
-
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="prepTime">Prep Time (minutes)</label>
-                  <input type="number" id="prepTime" name="prepTime" value={formData.prepTime} onChange={handleChange} placeholder="e.g., 15" min="0" max="999" />
+                  <input type="number" id="prepTime" name="prepTime" value={formData.prepTime} onChange={handleChange} placeholder="e.g., 15" min="0" />
                 </div>
                 <div className="form-group">
                   <label htmlFor="cookTime">Cook Time (minutes)</label>
-                  <input type="number" id="cookTime" name="cookTime" value={formData.cookTime} onChange={handleChange} placeholder="e.g., 30" min="0" max="999" />
+                  <input type="number" id="cookTime" name="cookTime" value={formData.cookTime} onChange={handleChange} placeholder="e.g., 30" min="0" />
                 </div>
               </div>
             </div>
 
-            {/* ✅ Ingredients — Search + Cards */}
+            {/* Ingredients */}
             <div className="form-section">
               <div className="section-header">
                 <h2>Ingredients *</h2>
-                <span className="item-count">{formData.ingredients.length} items</span>
+                <span className="item-count">{formData.ingredients.length} selected</span>
               </div>
               {fieldErrors.ingredients && <span className="error">{fieldErrors.ingredients}</span>}
 
-              {/* Search Box */}
               <div className="ingredient-search-wrapper">
                 <input
                   type="text"
                   className="ingredient-search-input"
-                  placeholder="🔍 Search ingredient (e.g. chicken, garlic)..."
+                  placeholder="🔍 Search ingredients (e.g. chicken, garlic)..."
                   value={ingredientSearch}
                   onChange={(e) => setIngredientSearch(e.target.value)}
                 />
-                {searchLoading && <div className="search-loading-dots">Searching...</div>}
+                {searchLoading && <div className="search-loading-dots">Loading ingredients...</div>}
 
-                {/* Search Results */}
+                {/* ✅ Always visible ingredient grid */}
                 {searchResults.length > 0 && (
                   <div className="ingredient-search-results">
-                    {searchResults.map((ing) => (
-                      <div key={ing.id} className="ingredient-result-card" onClick={() => addIngredientFromSearch(ing)}>
-                        <img
-                          src={ing.image_url || "/ingredients/default.jpg"}
-                          alt={ing.name}
-                          className="ingredient-result-img"
-                          onError={(e) => { e.target.src = "/ingredients/default.jpg"; }}
-                        />
-                        <span className="ingredient-result-name">{ing.name}</span>
-                        <span className="ingredient-result-add">+ Add</span>
-                      </div>
-                    ))}
+                    {searchResults.map((ing) => {
+                      const isAdded = formData.ingredients.some(i => i.name?.toLowerCase() === ing.name.toLowerCase());
+                      return (
+                        <div
+                          key={ing.id}
+                          className={`ingredient-result-card ${isAdded ? "already-added" : ""}`}
+                          onClick={() => !isAdded && addIngredientFromSearch(ing)}
+                        >
+                          <img
+                            src={ing.image_url || "/ingredients/default.jpg"}
+                            alt={ing.name}
+                            className="ingredient-result-img"
+                            onError={(e) => { e.target.src = "/ingredients/default.jpg"; }}
+                          />
+                          <span className="ingredient-result-name">{ing.name}</span>
+                          <span className="ingredient-result-add">{isAdded ? "✓ Added" : "+ Add"}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -345,29 +361,34 @@ function AddRecipe() {
                 )}
               </div>
 
-              {/* Added Ingredient Cards */}
+              {/* Selected Ingredient Cards */}
               {formData.ingredients.length > 0 && (
-                <div className="added-ingredients-grid">
-                  {formData.ingredients.map((ing, idx) => (
-                    <div key={idx} className="added-ingredient-card">
-                      <button type="button" className="remove-ingredient-card-btn" onClick={() => removeIngredientCard(idx)}>✕</button>
-                      <img
-                        src={ing.image_url || "/ingredients/default.jpg"}
-                        alt={ing.name}
-                        className="added-ingredient-img"
-                        onError={(e) => { e.target.src = "/ingredients/default.jpg"; }}
-                      />
-                      <span className="added-ingredient-name">{ing.name}</span>
-                      <input
-                        type="text"
-                        className="added-ingredient-amount"
-                        placeholder="Amount (e.g. 2 cups)"
-                        value={ing.amount}
-                        onChange={(e) => updateIngredientAmount(idx, e.target.value)}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#374151", margin: "20px 0 8px" }}>
+                    Selected ({formData.ingredients.length})
+                  </h3>
+                  <div className="added-ingredients-grid">
+                    {formData.ingredients.map((ing, idx) => (
+                      <div key={idx} className="added-ingredient-card">
+                        <button type="button" className="remove-ingredient-card-btn" onClick={() => removeIngredientCard(idx)}>✕</button>
+                        <img
+                          src={ing.image_url || "/ingredients/default.jpg"}
+                          alt={ing.name}
+                          className="added-ingredient-img"
+                          onError={(e) => { e.target.src = "/ingredients/default.jpg"; }}
+                        />
+                        <span className="added-ingredient-name">{ing.name}</span>
+                        <input
+                          type="text"
+                          className="added-ingredient-amount"
+                          placeholder="Amount (e.g. 2 cups)"
+                          value={ing.amount}
+                          onChange={(e) => updateIngredientAmount(idx, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
@@ -383,7 +404,7 @@ function AddRecipe() {
                   <div key={index} className="dynamic-field instruction-field">
                     <span className="step-number">Step {index + 1}</span>
                     <textarea value={instruction} onChange={(e) => handleInstructionChange(index, e.target.value)} placeholder={`Describe step ${index + 1}...`} rows="3" />
-                    <button type="button" onClick={() => removeInstruction(index)} className="remove-btn" disabled={formData.instructions.length === 1} title="Remove step">
+                    <button type="button" onClick={() => removeInstruction(index)} className="remove-btn" disabled={formData.instructions.length === 1}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   </div>
