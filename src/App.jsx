@@ -1,9 +1,8 @@
 import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
-import { supabase } from "./supabase";
+import { supabase } from "./supabaseClient";
 import { RoleProvider } from "./contexts/RoleContext";
 import Layout from "./components/Layout";
-
 import Popular from "./pages/Popular.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import RecipeDetail from "./pages/RecipeDetail.jsx";
@@ -18,6 +17,7 @@ import ResetPassword from "./components/Auth/ResetPassword.jsx";
 import Profile from "./pages/Profile.jsx";
 import MyRecipes from "./pages/MyRecipes.jsx";
 import SearchResults from './pages/SearchResults';
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
   // 🔍 Supabase auth sanity check
@@ -50,7 +50,8 @@ function App() {
           <Route path="/popular" element={<Popular />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/search" element={<SearchResults />} />
-
+          <Route path="/admin" element={<AdminDashboard />} />
+          
           {/* Protected Routes */}
           <Route
             path="/add-recipe"

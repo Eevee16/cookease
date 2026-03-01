@@ -3,32 +3,65 @@ import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import "../styles/Popular.css";
 
+const TABS = ["Most Views", "Most Liked"];
+const TAB_STORAGE_KEY = "popular_active_tab";
+
 const Popular = () => {
-  const [activeTab, setActiveTab] = useState("All Time");
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem(TAB_STORAGE_KEY);
+    return TABS.includes(saved) ? saved : "Most Views";
+  });
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch popular recipes (only approved)
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+  };
+
   useEffect(() => {
     const fetchPopularRecipes = async () => {
+      setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("recipes")
-          .select("*")
-          .eq("status", "approved")
-          .order("view_count", { ascending: false })
-          .limit(12);
+        if (activeTab === "Most Views") {
+          const { data, error } = await supabase
+            .from("recipes")
+            .select("*")
+            .eq("status", "approved")
+            .order("view_count", { ascending: false })
+            .limit(12);
 
-        if (error) throw error;
+          if (error) throw error;
+          setRecipes(data.map((recipe, index) => ({ ...recipe, rank: index + 1, net_votes: null })));
 
-        console.log("Fetched recipes:", data); // Debug log
+        } else if (activeTab === "Most Liked") {
+          const { data: recipesData, error: recipesError } = await supabase
+            .from("recipes")
+            .select("*")
+            .eq("status", "approved");
 
-        const recipesData = data.map((recipe, index) => ({
-          ...recipe,
-          rank: index + 1,
-        }));
+          if (recipesError) throw recipesError;
 
-        setRecipes(recipesData);
+          const { data: votesData, error: votesError } = await supabase
+            .from("votes")
+            .select("recipe_id, vote_type");
+
+          if (votesError) throw votesError;
+
+          const voteMap = {};
+          votesData.forEach(({ recipe_id, vote_type }) => {
+            if (!voteMap[recipe_id]) voteMap[recipe_id] = 0;
+            voteMap[recipe_id] += vote_type === "up" ? 1 : -1;
+          });
+
+          const sorted = recipesData
+            .map(r => ({ ...r, net_votes: voteMap[r.id] || 0 }))
+            .sort((a, b) => b.net_votes - a.net_votes)
+            .slice(0, 12)
+            .map((recipe, index) => ({ ...recipe, rank: index + 1 }));
+
+          setRecipes(sorted);
+        }
       } catch (err) {
         console.error("Error fetching popular recipes:", err);
       } finally {
@@ -37,9 +70,9 @@ const Popular = () => {
     };
 
     fetchPopularRecipes();
-  }, []);
+  }, [activeTab]);
 
-  const formatViews = (num) => {
+  const formatCount = (num) => {
     if (!num) return "0";
     if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
     return num.toString();
@@ -66,12 +99,11 @@ const Popular = () => {
       </div>
 
       <div className="popular-main">
-        {/* Tabs */}
         <div className="popular-tabs">
-          {["All Time", "This Week", "New & Rising"].map((tab) => (
+          {TABS.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabChange(tab)}
               className={`popular-tab ${activeTab === tab ? "active" : ""}`}
             >
               {tab}
@@ -79,7 +111,6 @@ const Popular = () => {
           ))}
         </div>
 
-        {/* Recipe Grid */}
         {recipes.length === 0 ? (
           <div className="popular-empty">
             <div className="popular-empty-icon">📊</div>
@@ -95,49 +126,51 @@ const Popular = () => {
                 className="popular-card"
               >
                 <div className="popular-image-container">
-                  {/* Rank Badge */}
-                  <div className={`rank-badge ${recipe.rank <= 3 ? 'top-three' : ''}`}>
+                  <div className={`rank-badge ${recipe.rank <= 3 ? "top-three" : ""}`}>
                     #{recipe.rank}
                   </div>
 
                   {recipe.image_url ? (
-                    <img 
-                      src={recipe.image_url} 
-                      alt={recipe.title} 
+                    <img
+                      src={recipe.image_url}
+                      alt={recipe.title}
                       loading="lazy"
                       onError={(e) => {
-                        console.log("Image failed to load:", recipe.image_url);
-                        e.target.style.display = 'none';
-                        e.target.nextElementSibling.style.display = 'flex';
+                        e.target.style.display = "none";
+                        e.target.nextElementSibling.style.display = "flex";
                       }}
                     />
                   ) : null}
-                  
-                  <div 
-                    className="no-image" 
-                    style={{ display: recipe.image_url ? 'none' : 'flex' }}
+
+                  <div
+                    className="no-image"
+                    style={{ display: recipe.image_url ? "none" : "flex" }}
                   >
                     No Image
                   </div>
-                  
+
                   <div className="view-badge">
-                    👁️ {formatViews(recipe.view_count || 0)}
+                    {activeTab === "Most Liked" ? (
+                      <>▲ {recipe.net_votes > 0 ? `+${recipe.net_votes}` : recipe.net_votes}</>
+                    ) : (
+                      <>👁️ {formatCount(recipe.view_count || 0)}</>
+                    )}
                   </div>
                 </div>
 
                 <div className="popular-info">
                   <h3 className="popular-title">{recipe.title || "Untitled"}</h3>
-                  
+
                   <div className="popular-badges">
                     <span className="badge category">{recipe.category || "Uncategorized"}</span>
                     <span className="badge cuisine">{recipe.cuisine || "Global"}</span>
-                    <span className={`badge difficulty ${(recipe.difficulty || 'Medium').toLowerCase()}`}>
+                    <span className={`badge difficulty ${(recipe.difficulty || "Medium").toLowerCase()}`}>
                       {recipe.difficulty || "Medium"}
                     </span>
                   </div>
-                  
+
                   <p className="popular-owner">By {recipe.owner_name || "Anonymous"}</p>
-                  
+
                   <div className="popular-stats">
                     <span>⏱️ {(recipe.prep_time || 0) + (recipe.cook_time || 0)} min</span>
                     <span>🍽️ {recipe.servings || 4} servings</span>

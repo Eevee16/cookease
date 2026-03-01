@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useRoles } from "../contexts/RoleContext";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../contexts/RoleContext";
 import "../styles/AdminDashboard.css";
 
 function AdminDashboard() {

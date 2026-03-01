@@ -20,8 +20,8 @@ export function RoleProvider({ children }) {
   const [role, setRole] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isModerator, setIsModerator] = useState(false);
+  const [fullName, setFullName] = useState(""); // ✅ added
 
-  // Auth state listener
   useEffect(() => {
     const getSession = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -37,13 +37,13 @@ export function RoleProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch user profile only if logged in
   useEffect(() => {
     if (!user) {
       setUserData(null);
       setRole(null);
       setIsAdmin(false);
       setIsModerator(false);
+      setFullName(""); // ✅
       setLoading(false);
       return;
     }
@@ -51,17 +51,11 @@ export function RoleProvider({ children }) {
     const fetchUserData = async () => {
       setLoading(true);
       try {
-        console.log("🔍 Fetching data for user ID:", user.id);
-        
         const { data, error } = await supabase
           .from("profiles")
-          .select("id, email, role")
+          .select("id, email, role, first_name, last_name") // ✅ added
           .eq("id", user.id)
           .maybeSingle();
-
-        console.log("📊 Profile data from database:", data);
-        console.log("❌ Error (if any):", error);
-        console.log("👤 Role detected:", data?.role);
 
         if (error) throw error;
 
@@ -69,15 +63,19 @@ export function RoleProvider({ children }) {
         setRole(data?.role || null);
         setIsAdmin(data?.role === "admin");
         setIsModerator(data?.role === "moderator" || data?.role === "admin");
-        
-        console.log("✅ isModerator set to:", data?.role === "moderator" || data?.role === "admin");
-        console.log("✅ isAdmin set to:", data?.role === "admin");
+
+        // ✅ Build full name
+        const fn = data?.first_name || "";
+        const ln = data?.last_name || "";
+        setFullName([fn, ln].filter(Boolean).join(" ") || user.email || "");
+
       } catch (err) {
         console.error("Error fetching profile:", err.message || err);
         setUserData(null);
         setRole(null);
         setIsAdmin(false);
         setIsModerator(false);
+        setFullName(user.email || "");
       } finally {
         setLoading(false);
       }
@@ -93,11 +91,12 @@ export function RoleProvider({ children }) {
     setRole(null);
     setIsAdmin(false);
     setIsModerator(false);
+    setFullName(""); // ✅
   };
 
   return (
     <RoleContext.Provider
-      value={{ user, userData, role, isAdmin, isModerator, loading, logout }}
+      value={{ user, userData, role, isAdmin, isModerator, loading, logout, fullName }} // ✅ exposed
     >
       {children}
     </RoleContext.Provider>

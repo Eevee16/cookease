@@ -68,8 +68,8 @@
 }
 
 .search-bar button {
-  background: #f97316;
-  border: none;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   padding: 10px 16px;
   border-radius: 8px;
   font-size: 18px;

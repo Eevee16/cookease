@@ -1,27 +1,19 @@
 import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 import "../styles/RecipeCard.css";
+import "../styles/votes.css";
 
 function RecipeCard({ recipe }) {
   const {
-    id,
-    title,
-    image_url,
-    category,
-    cuisine,
-    difficulty,
-    prep_time,
-    cook_time,
-    servings,
-    rating,
-    view_count,
-    owner_name
+    id, title, image_url, category, cuisine,
+    difficulty, prep_time, cook_time, servings,
+    rating, view_count, owner_name
   } = recipe;
 
   const totalTime = (prep_time || 0) + (cook_time || 0);
 
   const formatTime = (minutes) => {
-    if (!minutes) return "N/A";
+    if (!minutes) return null;
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -41,34 +33,23 @@ function RecipeCard({ recipe }) {
     <Link to={`/recipe/${id}`} className="recipe-card">
       <div className="recipe-card-image">
         {image_url ? (
-          <img 
-            src={image_url} 
-            alt={title}
-            loading="lazy"
-          />
+          <img src={image_url} alt={title} loading="lazy" />
         ) : (
           <div className="recipe-card-no-image">
             <span>🍽️</span>
             <p>No Image</p>
           </div>
         )}
-        
-        {/* Badges */}
+
         <div className="recipe-card-badges">
-          {category && (
-            <span className="badge badge-category">{category}</span>
-          )}
+          {category && <span className="badge badge-category">{category}</span>}
           {difficulty && (
-            <span 
-              className="badge badge-difficulty"
-              style={{ backgroundColor: getDifficultyColor(difficulty) }}
-            >
+            <span className="badge badge-difficulty" style={{ backgroundColor: getDifficultyColor(difficulty) }}>
               {difficulty}
             </span>
           )}
         </div>
 
-        {/* View Count */}
         {view_count > 0 && (
           <div className="recipe-card-views">
             <span>👁️ {view_count}</span>
@@ -78,30 +59,18 @@ function RecipeCard({ recipe }) {
 
       <div className="recipe-card-content">
         <h3 className="recipe-card-title">{title || "Untitled Recipe"}</h3>
-        
-        {/* Cuisine */}
+
         {cuisine && (
-          <p className="recipe-card-cuisine">
-            <span>🌍</span> {cuisine}
-          </p>
+          <p className="recipe-card-cuisine"><span>🌍</span> {cuisine}</p>
         )}
 
-        {/* Info Row */}
         <div className="recipe-card-info">
-          {totalTime > 0 && (
+          {totalTime > 0 && formatTime(totalTime) && (
             <div className="info-item">
               <span className="info-icon">⏱️</span>
               <span>{formatTime(totalTime)}</span>
             </div>
           )}
-          
-          {servings && (
-            <div className="info-item">
-              <span className="info-icon">🍽️</span>
-              <span>{servings} servings</span>
-            </div>
-          )}
-
           {rating > 0 && (
             <div className="info-item">
               <span className="info-icon">⭐</span>
@@ -110,12 +79,9 @@ function RecipeCard({ recipe }) {
           )}
         </div>
 
-        {/* Author */}
         {owner_name && (
           <div className="recipe-card-author">
-            <div className="author-avatar">
-              {owner_name[0]?.toUpperCase()}
-            </div>
+            <div className="author-avatar">{owner_name[0]?.toUpperCase()}</div>
             <span className="author-name">by {owner_name}</span>
           </div>
         )}

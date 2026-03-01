@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useRoles } from "../../contexts/RoleContext";
 import { supabase } from "../../supabaseClient";
@@ -11,10 +11,21 @@ const slugify = (text = "") =>
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
 
+const UNITS = ["pcs", "cups", "tbsp", "tsp", "g", "kg", "ml", "L", "oz", "lb", "cloves", "slices", "strips", "bunches", "stalks", "pinch", "handful", "to taste"];
+const PREP_SUGGESTIONS = ["minced", "chopped", "sliced", "diced", "thinly sliced", "roughly chopped", "finely chopped", "beaten", "room temperature", "melted", "softened", "peeled", "grated", "julienned", "halved", "quartered", "crushed"];
+
+const STORAGE_KEY = "addRecipe_formData";
+
+const defaultFormData = {
+  title: "", category: "", cuisine: "", difficulty: "",
+  prepTime: "", cookTime: "", servings: "1",
+  ingredients: [], instructions: [""]
+};
+
 function AddRecipe() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading } = useRoles();
+  const { user, loading, fullName } = useRoles();
 
   useEffect(() => {
     if (!loading && !user) navigate("/login", { state: { from: location } });
@@ -24,125 +35,130 @@ function AddRecipe() {
   const cuisineOptions = ["Filipino","Chinese","Japanese","Korean","Thai","Vietnamese","Indian","Italian","French","American","Mexican","Spanish","Greek","Middle Eastern","African","Fusion"];
   const difficultyOptions = ["Easy", "Medium", "Hard"];
 
-  const [formData, setFormData] = useState({
-    title: "", category: "", cuisine: "", difficulty: "",
-    prepTime: "", cookTime: "", servings: "1",
-    ingredients: [], instructions: [""]
+  // ✅ Load from localStorage on first render, fall back to defaults
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : defaultFormData;
+    } catch {
+      return defaultFormData;
+    }
   });
+
+  // ✅ Save to localStorage whenever formData changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+    } catch {
+      // Silently fail if localStorage is unavailable
+    }
+  }, [formData]);
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
-
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [allIngredients, setAllIngredients] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
+  // ✅ Popup state
+  const [popup, setPopup] = useState(null); // { ingredient, qty, unit, prep }
+
   const SHOW_DEFAULT = 8;
 
-  // Load all ingredients on mount
   useEffect(() => {
     const loadAll = async () => {
       setSearchLoading(true);
       try {
         const { data, error } = await supabase
-          .from("ingredients")
-          .select("id, name, image_url")
-          .order("name", { ascending: true })
-          .limit(200);
+          .from("ingredients").select("id, name, image_url")
+          .order("name", { ascending: true }).limit(200);
         if (error) throw error;
         setAllIngredients(data || []);
-      } catch (e) {
-        console.error("Error loading ingredients:", e);
-      } finally {
-        setSearchLoading(false);
-      }
+      } catch (e) { console.error("Error loading ingredients:", e); }
+      finally { setSearchLoading(false); }
     };
     loadAll();
   }, []);
 
-  // ✅ Show only 8 by default, filter when searching
   const searchResults = ingredientSearch.trim()
-    ? allIngredients.filter((i) => i.name.toLowerCase().includes(ingredientSearch.toLowerCase()))
+    ? allIngredients.filter(i => i.name.toLowerCase().includes(ingredientSearch.toLowerCase()))
     : allIngredients.slice(0, SHOW_DEFAULT);
 
-  const addIngredientFromSearch = (ingredient) => {
-    const alreadyAdded = formData.ingredients.some(
-      (i) => i.name?.toLowerCase() === ingredient.name.toLowerCase()
-    );
+  // ✅ Open popup instead of adding directly
+  const openPopup = (ingredient) => {
+    const alreadyAdded = formData.ingredients.some(i => i.name?.toLowerCase() === ingredient.name.toLowerCase());
     if (alreadyAdded) return;
-    setFormData((prev) => ({
+    setPopup({ ingredient, qty: "", unit: "pcs", prep: "" });
+  };
+
+  const closePopup = () => setPopup(null);
+
+  const confirmPopup = () => {
+    if (!popup) return;
+    const { ingredient, qty, unit, prep } = popup;
+    setFormData(prev => ({
       ...prev,
       ingredients: [...prev.ingredients, {
         id: ingredient.id,
         name: ingredient.name,
         image_url: ingredient.image_url || "",
-        amount: ""
+        qty,
+        unit,
+        prep
       }]
     }));
     if (fieldErrors.ingredients) setFieldErrors({ ...fieldErrors, ingredients: "" });
+    setPopup(null);
   };
 
   const removeIngredientCard = (idx) => {
-    setFormData((prev) => ({
-      ...prev,
-      ingredients: prev.ingredients.filter((_, i) => i !== idx)
-    }));
+    setFormData(prev => ({ ...prev, ingredients: prev.ingredients.filter((_, i) => i !== idx) }));
   };
 
-  const updateIngredientAmount = (idx, amount) => {
-    setFormData((prev) => {
+  const updateIngredient = (idx, field, value) => {
+    setFormData(prev => {
       const updated = [...prev.ingredients];
-      updated[idx] = { ...updated[idx], amount };
+      updated[idx] = { ...updated[idx], [field]: value };
       return { ...prev, ingredients: updated };
     });
   };
 
-  if (loading) {
-    return (
-      <div className="add-recipe-page">
-        <div className="add-recipe-main">
-          <div className="add-recipe-container">
-            <div className="loading-spinner"><div className="spinner"></div><p>Loading...</p></div>
-          </div>
-        </div>
+  if (loading) return (
+    <div className="add-recipe-page">
+      <div className="add-recipe-main">
+        <div className="loading-spinner"><div className="spinner"></div><p>Loading...</p></div>
       </div>
-    );
-  }
+    </div>
+  );
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (fieldErrors[e.target.name]) setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
   };
 
-  // ✅ Numbers only for prep/cook time
   const handleTimeChange = (e) => {
     const val = e.target.value.replace(/\D/g, "");
     setFormData({ ...formData, [e.target.name]: val });
-    if (fieldErrors[e.target.name]) setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
   };
 
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { alert("Please upload an image file"); return; }
-    if (file.size > 10 * 1024 * 1024) { alert("Image size should be less than 10MB"); return; }
     try {
       const compressed = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true });
       setImageFile(compressed);
       setImagePreview(URL.createObjectURL(compressed));
-    } catch {
-      alert("Failed to process image. Please try another file.");
-    }
+    } catch { alert("Failed to process image."); }
   };
 
   const handleInstructionChange = (i, v) => {
     const steps = [...formData.instructions];
     steps[i] = v;
     setFormData({ ...formData, instructions: steps });
-    if (fieldErrors.instructions) setFieldErrors({ ...fieldErrors, instructions: "" });
   };
 
   const addInstruction = () => setFormData({ ...formData, instructions: [...formData.instructions, ""] });
@@ -156,9 +172,15 @@ function AddRecipe() {
     setSubmitting(true);
     setFieldErrors({});
 
+    // ✅ Save ingredients as structured JSON
+    const cleanedIngredients = formData.ingredients.map(i => {
+      const parts = [i.qty, i.unit !== "pcs" || i.qty ? i.unit : "", i.name, i.prep ? `(${i.prep})` : ""].filter(Boolean);
+      return parts.join(" ").trim();
+    });
+
     const cleaned = {
       ...formData,
-      ingredients: formData.ingredients.map(i => `${i.amount ? i.amount + " " : ""}${i.name}`.trim()),
+      ingredients: cleanedIngredients,
       instructions: formData.instructions.filter(i => i.trim())
     };
 
@@ -185,7 +207,7 @@ function AddRecipe() {
           slug: `${slugify(cleaned.title)}-${crypto.randomUUID().slice(0, 6)}`,
           image_url: "",
           owner_id: user.id,
-          owner_name: user.user_metadata?.full_name || user.email,
+          owner_name: fullName || user.email,
           rating: 0,
           status: "pending"
         }])
@@ -202,23 +224,99 @@ function AddRecipe() {
           if (uploadError) throw uploadError;
           const { data } = supabase.storage.from("recipes").getPublicUrl(filePath);
           await supabase.from("recipes").update({ image_url: data.publicUrl }).eq("id", recipe.id);
-        } finally {
-          setUploading(false);
-        }
+        } finally { setUploading(false); }
       }
+
+      // ✅ Clear saved draft after successful submission
+      localStorage.removeItem(STORAGE_KEY);
 
       alert("Recipe submitted for approval!");
       navigate("/");
     } catch (err) {
-      console.error(err);
       alert("Failed to submit recipe: " + err.message);
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   return (
     <div className="add-recipe-page">
+      {/* ✅ Ingredient Popup */}
+      {popup && (
+        <div className="ing-popup-overlay" onClick={closePopup}>
+          <div className="ing-popup" onClick={e => e.stopPropagation()}>
+            <div className="ing-popup-header">
+              <img
+                src={popup.ingredient.image_url || "/ingredients/default.jpg"}
+                alt={popup.ingredient.name}
+                className="ing-popup-img"
+                onError={e => { e.target.src = "/ingredients/default.jpg"; }}
+              />
+              <div>
+                <p className="ing-popup-title">{popup.ingredient.name}</p>
+                <p className="ing-popup-subtitle">Add quantity & prep details</p>
+              </div>
+              <button className="ing-popup-close" onClick={closePopup}>✕</button>
+            </div>
+
+            <div className="ing-popup-fields">
+              <div className="ing-popup-row">
+                <div className="ing-popup-field">
+                  <label>Quantity</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="e.g. 2"
+                    value={popup.qty}
+                    onChange={e => setPopup(p => ({ ...p, qty: e.target.value }))}
+                    className="ing-popup-input"
+                    autoFocus
+                  />
+                </div>
+                <div className="ing-popup-field">
+                  <label>Unit</label>
+                  <select
+                    value={popup.unit}
+                    onChange={e => setPopup(p => ({ ...p, unit: e.target.value }))}
+                    className="ing-popup-input"
+                  >
+                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="ing-popup-field">
+                <label>Preparation <span className="optional-tag">optional</span></label>
+                <input
+                  type="text"
+                  placeholder="e.g. minced, thinly sliced, beaten..."
+                  value={popup.prep}
+                  onChange={e => setPopup(p => ({ ...p, prep: e.target.value }))}
+                  className="ing-popup-input"
+                />
+                <div className="prep-suggestions">
+                  {PREP_SUGGESTIONS.map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`prep-tag ${popup.prep === s ? "active" : ""}`}
+                      onClick={() => setPopup(p => ({ ...p, prep: p.prep === s ? "" : s }))}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="ing-popup-actions">
+              <button type="button" className="ing-popup-cancel" onClick={closePopup}>Cancel</button>
+              <button type="button" className="ing-popup-confirm" onClick={confirmPopup}>
+                Add {popup.ingredient.name}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="add-recipe-main">
         <div className="add-recipe-container">
           <div className="page-header">
@@ -227,7 +325,6 @@ function AddRecipe() {
           </div>
 
           <form className="recipe-form" onSubmit={handleSubmit}>
-
             {/* Recipe Image */}
             <div className="form-section">
               <h2>Recipe Image</h2>
@@ -262,16 +359,16 @@ function AddRecipe() {
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="category">Category *</label>
-                  <select id="category" name="category" value={formData.category} onChange={handleChange} className={fieldErrors.category ? "error-input" : ""}>
+                  <label>Category *</label>
+                  <select name="category" value={formData.category} onChange={handleChange} className={fieldErrors.category ? "error-input" : ""}>
                     <option value="">Select category</option>
                     {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   {fieldErrors.category && <span className="error">{fieldErrors.category}</span>}
                 </div>
                 <div className="form-group">
-                  <label htmlFor="cuisine">Cuisine *</label>
-                  <select id="cuisine" name="cuisine" value={formData.cuisine} onChange={handleChange} className={fieldErrors.cuisine ? "error-input" : ""}>
+                  <label>Cuisine *</label>
+                  <select name="cuisine" value={formData.cuisine} onChange={handleChange} className={fieldErrors.cuisine ? "error-input" : ""}>
                     <option value="">Select cuisine</option>
                     {cuisineOptions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -280,47 +377,26 @@ function AddRecipe() {
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="difficulty">Difficulty *</label>
-                  <select id="difficulty" name="difficulty" value={formData.difficulty} onChange={handleChange} className={fieldErrors.difficulty ? "error-input" : ""}>
+                  <label>Difficulty *</label>
+                  <select name="difficulty" value={formData.difficulty} onChange={handleChange} className={fieldErrors.difficulty ? "error-input" : ""}>
                     <option value="">Select difficulty</option>
                     {difficultyOptions.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   {fieldErrors.difficulty && <span className="error">{fieldErrors.difficulty}</span>}
                 </div>
                 <div className="form-group">
-                  <label htmlFor="servings">Servings</label>
-                  <input type="number" id="servings" name="servings" value={formData.servings} onChange={handleChange} min="1" max="100" />
+                  <label>Servings</label>
+                  <input type="number" name="servings" value={formData.servings} onChange={handleChange} min="1" max="100" />
                 </div>
               </div>
               <div className="form-row">
-                {/* ✅ Numbers only — inputmode numeric, pattern, no letters */}
                 <div className="form-group">
-                  <label htmlFor="prepTime">Prep Time (minutes)</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    id="prepTime"
-                    name="prepTime"
-                    value={formData.prepTime}
-                    onChange={handleTimeChange}
-                    placeholder="e.g., 15"
-                    className={fieldErrors.prepTime ? "error-input" : ""}
-                  />
+                  <label>Prep Time (minutes)</label>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" name="prepTime" value={formData.prepTime} onChange={handleTimeChange} placeholder="e.g., 15" />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="cookTime">Cook Time (minutes)</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    id="cookTime"
-                    name="cookTime"
-                    value={formData.cookTime}
-                    onChange={handleTimeChange}
-                    placeholder="e.g., 30"
-                    className={fieldErrors.cookTime ? "error-input" : ""}
-                  />
+                  <label>Cook Time (minutes)</label>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" name="cookTime" value={formData.cookTime} onChange={handleTimeChange} placeholder="e.g., 30" />
                 </div>
               </div>
             </div>
@@ -339,43 +415,32 @@ function AddRecipe() {
                   className="ingredient-search-input"
                   placeholder="🔍 Search ingredients..."
                   value={ingredientSearch}
-                  onChange={(e) => setIngredientSearch(e.target.value)}
+                  onChange={e => setIngredientSearch(e.target.value)}
                 />
                 {searchLoading && <div className="search-loading-dots">Loading ingredients...</div>}
-
-                {/* ✅ Fixed 4-column grid, cards don't shrink */}
                 {!searchLoading && (
                   <div className="ingredient-search-results">
-                    {searchResults.map((ing) => {
+                    {searchResults.map(ing => {
                       const isAdded = formData.ingredients.some(i => i.name?.toLowerCase() === ing.name.toLowerCase());
                       return (
                         <div
                           key={ing.id}
                           className={`ingredient-result-card ${isAdded ? "already-added" : ""}`}
-                          onClick={() => !isAdded && addIngredientFromSearch(ing)}
+                          onClick={() => !isAdded && openPopup(ing)}
                         >
-                          <img
-                            src={ing.image_url || "/ingredients/default.jpg"}
-                            alt={ing.name}
-                            className="ingredient-result-img"
-                            onError={(e) => { e.target.src = "/ingredients/default.jpg"; }}
-                          />
+                          <img src={ing.image_url || "/ingredients/default.jpg"} alt={ing.name} className="ingredient-result-img" onError={e => { e.target.src = "/ingredients/default.jpg"; }} />
                           <span className="ingredient-result-name">{ing.name}</span>
                           <span className="ingredient-result-add">{isAdded ? "✓ Added" : "+ Add"}</span>
                         </div>
                       );
                     })}
-                    {!ingredientSearch && (
-                      <p className="ingredient-search-hint">Type to search all {allIngredients.length} ingredients</p>
-                    )}
-                    {ingredientSearch && searchResults.length === 0 && (
-                      <p className="no-ingredient-results">No results for "{ingredientSearch}"</p>
-                    )}
+                    {!ingredientSearch && <p className="ingredient-search-hint">Type to search all {allIngredients.length} ingredients</p>}
+                    {ingredientSearch && searchResults.length === 0 && <p className="no-ingredient-results">No results for "{ingredientSearch}"</p>}
                   </div>
                 )}
               </div>
 
-              {/* Selected Ingredient Cards */}
+              {/* ✅ Selected ingredient cards with editable fields */}
               {formData.ingredients.length > 0 && (
                 <>
                   <h3 className="selected-ingredients-label">Selected ({formData.ingredients.length})</h3>
@@ -383,19 +448,30 @@ function AddRecipe() {
                     {formData.ingredients.map((ing, idx) => (
                       <div key={idx} className="added-ingredient-card">
                         <button type="button" className="remove-ingredient-card-btn" onClick={() => removeIngredientCard(idx)}>✕</button>
-                        <img
-                          src={ing.image_url || "/ingredients/default.jpg"}
-                          alt={ing.name}
-                          className="added-ingredient-img"
-                          onError={(e) => { e.target.src = "/ingredients/default.jpg"; }}
-                        />
+                        <img src={ing.image_url || "/ingredients/default.jpg"} alt={ing.name} className="added-ingredient-img" onError={e => { e.target.src = "/ingredients/default.jpg"; }} />
                         <span className="added-ingredient-name">{ing.name}</span>
+                        <div className="added-ingredient-qty-row">
+                          <input
+                            type="text"
+                            className="added-ingredient-qty"
+                            placeholder="Qty"
+                            value={ing.qty}
+                            onChange={e => updateIngredient(idx, "qty", e.target.value)}
+                          />
+                          <select
+                            className="added-ingredient-unit"
+                            value={ing.unit}
+                            onChange={e => updateIngredient(idx, "unit", e.target.value)}
+                          >
+                            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </div>
                         <input
                           type="text"
-                          className="added-ingredient-amount"
-                          placeholder="Amount (e.g. 2 cups)"
-                          value={ing.amount}
-                          onChange={(e) => updateIngredientAmount(idx, e.target.value)}
+                          className="added-ingredient-prep"
+                          placeholder="Prep (e.g. minced)"
+                          value={ing.prep}
+                          onChange={e => updateIngredient(idx, "prep", e.target.value)}
                         />
                       </div>
                     ))}
@@ -415,7 +491,7 @@ function AddRecipe() {
                 {formData.instructions.map((instruction, index) => (
                   <div key={index} className="dynamic-field instruction-field">
                     <span className="step-number">Step {index + 1}</span>
-                    <textarea value={instruction} onChange={(e) => handleInstructionChange(index, e.target.value)} placeholder={`Describe step ${index + 1}...`} rows="3" />
+                    <textarea value={instruction} onChange={e => handleInstructionChange(index, e.target.value)} placeholder={`Describe step ${index + 1}...`} rows="3" />
                     <button type="button" onClick={() => removeInstruction(index)} className="remove-btn" disabled={formData.instructions.length === 1}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
@@ -432,10 +508,9 @@ function AddRecipe() {
             <div className="form-actions">
               <button type="button" onClick={() => navigate("/")} className="cancel-btn" disabled={submitting || uploading}>Cancel</button>
               <button type="submit" className="submit-btn" disabled={submitting || uploading}>
-                {submitting ? (<><div className="btn-spinner"></div>Submitting...</>) :
-                  uploading ? (<><div className="btn-spinner"></div>Uploading...</>) : (
-                  <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Submit Recipe</>
-                )}
+                {submitting ? <><div className="btn-spinner"></div>Submitting...</> :
+                 uploading ? <><div className="btn-spinner"></div>Uploading...</> :
+                 <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Submit Recipe</>}
               </button>
             </div>
           </form>
