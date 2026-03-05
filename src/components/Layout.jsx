@@ -16,6 +16,9 @@ function Layout({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
 
+  // ✅ Ban popup state
+  const [banPopup, setBanPopup] = useState(null); // null | { type: "tempbanned"|"banned", until?: string, reason?: string }
+
   useEffect(() => {
     if (!user) return;
     fetchNotifications();
@@ -95,12 +98,91 @@ function Layout({ children }) {
     if (e.key === 'Enter') handleSearch(e);
   };
 
+  // ✅ Intercept Add Recipe click — check ban before navigating
+  const handleAddRecipeClick = async (e) => {
+    e.preventDefault();
+
+    // Not logged in — go to login normally
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("status, ban_until, ban_reason")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.status === "banned") {
+        setBanPopup({ type: "banned", reason: profile.ban_reason });
+        return;
+      }
+
+      if (profile?.status === "tempbanned") {
+        const banUntil = new Date(profile.ban_until);
+        if (banUntil > new Date()) {
+          setBanPopup({ type: "tempbanned", until: profile.ban_until, reason: profile.ban_reason });
+          return;
+        }
+        // Ban expired — let through
+      }
+
+      navigate("/add-recipe");
+    } catch {
+      // On error just navigate normally
+      navigate("/add-recipe");
+    }
+  };
+
   return (
     <div className="app-layout">
+
+      {/* ✅ Ban Popup */}
+      {banPopup && (
+        <div className="ban-popup-overlay" onClick={() => setBanPopup(null)}>
+          <div className="ban-popup" onClick={e => e.stopPropagation()}>
+            <div className="ban-popup-icon">
+              {banPopup.type === "banned" ? "🚫" : "🕐"}
+            </div>
+            <h3 className="ban-popup-title">
+              {banPopup.type === "banned" ? "Permanently Banned" : "Temporarily Suspended"}
+            </h3>
+            <p className="ban-popup-message">
+              {banPopup.type === "banned"
+                ? "Your account has been permanently banned. You cannot add recipes."
+                : `You are suspended and cannot add recipes until:`}
+            </p>
+            {banPopup.type === "tempbanned" && (
+              <div className="ban-popup-date">
+                {new Date(banPopup.until).toLocaleDateString("en-PH", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric"
+                })}
+              </div>
+            )}
+            {banPopup.reason && (
+              <p className="ban-popup-reason">
+                <strong>Reason:</strong> {banPopup.reason}
+              </p>
+            )}
+            <p className="ban-popup-contact">
+              If you believe this is a mistake, please contact support.
+            </p>
+            <button className="ban-popup-close-btn" onClick={() => setBanPopup(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="header">
         <div className="header-content">
           <button className="menu-btn">☰</button>
-          <h1 className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>CookEase</h1>
+          <h1 className="logo" onClick={() => navigate(user ? "/home" : "/")} style={{ cursor: "pointer" }}>CookEase</h1>
 
           <form className="search-bar" onSubmit={handleSearch}>
             <input
@@ -114,7 +196,7 @@ function Layout({ children }) {
           </form>
 
           <nav className="nav">
-            <Link to="/" className="nav-link">Home</Link>
+            <Link to="/home" className="nav-link">Home</Link>
             <Link to="/popular" className="nav-link">Popular</Link>
 
             <div
@@ -129,7 +211,11 @@ function Layout({ children }) {
               </div>
             </div>
 
-            <Link to="/add-recipe" className="add-recipe-link">+ Add Recipe</Link>
+            {/* ✅ Add Recipe now uses onClick handler instead of plain Link */}
+            <a href="/add-recipe" className="add-recipe-link" onClick={handleAddRecipeClick}>
+              + Add Recipe
+            </a>
+
             {isModerator && <Link to="/moderator" className="moderator-link">📋 Moderator</Link>}
 
             {/* Notification Bell */}

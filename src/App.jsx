@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 import { RoleProvider } from "./contexts/RoleContext";
 import Layout from "./components/Layout";
 import Popular from "./pages/Popular.jsx";
+import LandingPage from "./pages/Landingpage";
 import HomePage from "./pages/HomePage.jsx";
 import RecipeDetail from "./pages/RecipeDetail.jsx";
 import Signup from "./components/Auth/Signup.jsx";
@@ -42,7 +43,10 @@ function App() {
     <RoleProvider>
       <Layout>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          {/* ✅ Landing page is now the root */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<HomePage />} />
+
           <Route path="/recipe/:id" element={<RecipeDetail />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
