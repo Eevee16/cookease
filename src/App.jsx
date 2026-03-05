@@ -16,20 +16,22 @@ import SearchByCourseCuisine from "./pages/SearchByCourseCuisine.jsx";
 import ResetPassword from "./components/Auth/ResetPassword.jsx";
 import Profile from "./pages/Profile.jsx";
 import MyRecipes from "./pages/MyRecipes.jsx";
-import SearchResults from './pages/SearchResults';
+import SearchResults from "./pages/SearchResults";
 import AdminDashboard from "./pages/AdminDashboard";
+import AboutUs from "./pages/AboutUs";
+import ContactUs from "./pages/ContactUs";
+import AdminApproval from "./pages/AdminApproval";
+import AdminStats from "./pages/AdminStats";
+import UserPunishment from "./pages/UserPunishment";
 
 function App() {
-  // 🔍 Supabase auth sanity check
   useEffect(() => {
     supabase.auth.getSession().then(({ data, error }) => {
       console.log("Supabase session:", data);
       if (error) console.error("Supabase error:", error);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log("Auth state changed:", session);
     });
 
@@ -51,32 +53,16 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/admin" element={<AdminDashboard />} />
-          
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/admin-approval" element={<AdminApproval />} />
+          <Route path="/admin-stats" element={<AdminStats />} />
+          <Route path="/admin-punishment" element={<UserPunishment />} />
+
           {/* Protected Routes */}
-          <Route
-            path="/add-recipe"
-            element={
-              <ProtectedRoute>
-                <AddRecipe />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/my-recipes"
-            element={
-              <ProtectedRoute>
-                <MyRecipes />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/add-recipe" element={<ProtectedRoute><AddRecipe /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/my-recipes" element={<ProtectedRoute><MyRecipes /></ProtectedRoute>} />
         </Routes>
       </Layout>
     </RoleProvider>

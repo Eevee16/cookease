@@ -1,0 +1,75 @@
+.stats-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 48px 40px 80px;
+}
+.stats-header {
+  max-width: 1200px;
+  margin: 0 auto 40px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #e5e7eb;
+}
+.stats-header h1 { font-size: 34px; font-weight: 900; color: #1f2937; margin: 0 0 6px; }
+.stats-header p { color: #6b7280; margin: 0; font-size: 16px; }
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto 48px;
+}
+.stats-card {
+  background: white;
+  border-radius: 18px;
+  padding: 28px 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  text-align: center;
+  border: 1px solid #f0f0f0;
+  transition: transform 0.2s;
+}
+.stats-card:hover { transform: translateY(-4px); }
+.stats-card-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+.stats-card-value { font-size: 38px; font-weight: 900; color: #1f2937; margin-bottom: 6px; display: block; }
+.stats-card-label { font-size: 12px; color: #9ca3af; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+
+.stats-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.stats-table-section {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  border: 1px solid #f0f0f0;
+}
+.stats-table-section h2 { font-size: 18px; font-weight: 800; color: #1f2937; margin: 0 0 24px; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.stats-table thead { background: linear-gradient(135deg, #667EAA, #8a9fd8); border-radius: 8px; }
+.stats-table th {
+  padding: 12px 14px; text-align: left;
+  color: rgba(255,255,255,0.9); font-size: 12px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+}
+.stats-table th:first-child { border-radius: 8px 0 0 8px; }
+.stats-table th:last-child { border-radius: 0 8px 8px 0; }
+.stats-table tbody tr { transition: background 0.15s; }
+.stats-table tbody tr:hover { background: #f8faff; }
+.stats-table td { padding: 14px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+.stats-status {
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; text-transform: capitalize;
+}
+.stats-status.approved { background: #d1fae5; color: #065f46; }
+.stats-status.pending { background: #fef3c7; color: #92400e; }
+.stats-status.rejected { background: #fee2e2; color: #991b1b; }
+.stats-loading { text-align: center; padding: 80px; color: #6b7280; font-size: 16px; }
+
+@media (max-width: 768px) {
+  .stats-page { padding: 32px 20px; }
+  .stats-tables { grid-template-columns: 1fr; }
+}
