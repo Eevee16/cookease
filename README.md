@@ -23,3 +23,4 @@ Make sure you have:
 git clone <repo-url>
 cd cookease
 npm install
+ 
