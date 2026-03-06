@@ -4,7 +4,7 @@ import { supabase } from "./supabaseClient";
 import { RoleProvider } from "./contexts/RoleContext";
 import Layout from "./components/Layout";
 import Popular from "./pages/Popular.jsx";
-import LandingPage from "./pages/Landingpage";
+import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage.jsx";
 import RecipeDetail from "./pages/RecipeDetail.jsx";
 import Signup from "./components/Auth/Signup.jsx";
