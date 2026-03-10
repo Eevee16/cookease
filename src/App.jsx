@@ -25,6 +25,9 @@ import AdminApproval from "./pages/AdminApproval";
 import AdminStats from "./pages/AdminStats";
 import UserPunishment from "./pages/UserPunishment";
 import BanChecker from './components/BanChecker';
+import EditRecipe from "./pages/EditRecipe.jsx";
+
+
 
 function App() {
   useEffect(() => {
@@ -64,6 +67,7 @@ function App() {
           <Route path="/admin-approval" element={<AdminApproval />} />
           <Route path="/admin-stats" element={<AdminStats />} />
           <Route path="/admin-punishment" element={<UserPunishment />} />
+          <Route path="/edit-recipe/:id" element={<EditRecipe />} />
 
           {/* Protected Routes */}
           <Route path="/add-recipe" element={<ProtectedRoute><AddRecipe /></ProtectedRoute>} />

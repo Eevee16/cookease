@@ -1,0 +1,497 @@
+/* EditRecipe.css */
+
+.edit-page {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #fff5f0, #ffffff);
+}
+
+/* ===== Header ===== */
+.edit-header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.edit-header-logo {
+  font-size: 26px;
+  font-weight: 700;
+  color: #667EAA;
+  margin: 0;
+}
+
+.edit-back-btn {
+  background: #f3f4f6;
+  border: none;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 10px 18px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.edit-back-btn:hover { background: #e5e7eb; transform: translateX(-2px); }
+
+.edit-status-badge {
+  background: #fff7ed;
+  color: #f97316;
+  border: 1.5px solid #fed7aa;
+  padding: 6px 16px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+/* ===== Container ===== */
+.edit-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 32px 100px;
+}
+
+.edit-title-row { margin-bottom: 32px; }
+
+.edit-page-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: #1f2937;
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+
+.edit-page-subtitle {
+  color: #6b7280;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* ===== Success / Error ===== */
+.edit-success {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  color: #166534;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.edit-error-inline {
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  color: #991b1b;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.edit-error-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 16px;
+  text-align: center;
+  padding: 40px;
+}
+.edit-error-icon { font-size: 64px; }
+.edit-error-box h2 { font-size: 24px; color: #374151; max-width: 500px; }
+
+/* ===== Form ===== */
+.edit-form { display: flex; flex-direction: column; gap: 0; }
+
+.edit-section {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  border: 1px solid #f3f4f6;
+}
+
+.edit-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.edit-field-hint {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: -12px 0 16px;
+}
+
+/* ===== Grids ===== */
+.edit-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.edit-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* ===== Fields ===== */
+.edit-field { display: flex; flex-direction: column; gap: 6px; }
+
+.edit-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.edit-field input,
+.edit-field select,
+.edit-field textarea {
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: #1f2937;
+  background: #fafafa;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  resize: vertical;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.edit-field input:focus,
+.edit-field select:focus,
+.edit-field textarea:focus {
+  outline: none;
+  border-color: #667EAA;
+  box-shadow: 0 0 0 3px rgba(102,126,170,0.15);
+  background: white;
+}
+
+.edit-field input::placeholder,
+.edit-field textarea::placeholder { color: #c1c7d0; }
+
+/* ===== Ingredient Builder ===== */
+.ing-builder {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+/* Search box */
+.ing-search-wrap {
+  position: relative;
+  flex: 2;
+  min-width: 200px;
+}
+
+.ing-search-input {
+  width: 100%;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fafafa;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ing-search-input:focus {
+  outline: none;
+  border-color: #667EAA;
+  box-shadow: 0 0 0 3px rgba(102,126,170,0.15);
+  background: white;
+}
+
+.ing-search-spinner {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+}
+
+/* Dropdown */
+.ing-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 200;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.ing-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.ing-dropdown-item:hover { background: #f3f4f6; }
+
+.ing-dropdown-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+/* Qty / Unit / Prep inputs */
+.ing-qty-input {
+  flex: 0.6;
+  min-width: 80px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fafafa;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.ing-qty-input:focus { outline: none; border-color: #667EAA; background: white; }
+
+.ing-unit-select {
+  flex: 0.8;
+  min-width: 100px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fafafa;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.ing-unit-select:focus { outline: none; border-color: #667EAA; background: white; }
+
+.ing-prep-input {
+  flex: 1;
+  min-width: 120px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fafafa;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.ing-prep-input:focus { outline: none; border-color: #667EAA; background: white; }
+
+.ing-add-btn {
+  background: linear-gradient(135deg, #667EAA, #8a9fd8);
+  color: white;
+  border: none;
+  padding: 11px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(102,126,170,0.3);
+  transition: all 0.2s;
+}
+.ing-add-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(102,126,170,0.4); }
+
+/* Ingredient list */
+.ing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ing-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 14px;
+  transition: background 0.2s;
+}
+.ing-list-item:hover { background: #f3f4f6; }
+
+.ing-list-img-wrap {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ing-list-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ing-list-img-fallback { font-size: 18px; }
+
+.ing-list-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.ing-list-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.ing-move-btn {
+  background: #f3f4f6;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.ing-move-btn:hover:not(:disabled) { background: #e5e7eb; color: #374151; }
+.ing-move-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.ing-remove-btn {
+  background: #fef2f2;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.ing-remove-btn:hover { background: #fee2e2; }
+
+.ing-empty {
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 14px;
+  padding: 24px;
+  border: 2px dashed #e5e7eb;
+  border-radius: 10px;
+}
+
+/* ===== Image Preview ===== */
+.edit-image-preview {
+  border-radius: 14px;
+  overflow: hidden;
+  max-height: 300px;
+  border: 2px solid #e5e7eb;
+}
+.edit-image-preview img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ===== Actions ===== */
+.edit-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.edit-cancel-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.edit-cancel-btn:hover { background: #e5e7eb; }
+
+.edit-save-btn {
+  background: linear-gradient(135deg, #667EAA, #8a9fd8);
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(102,126,170,0.3);
+  transition: all 0.3s;
+}
+.edit-save-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,170,0.4); }
+.edit-save-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* ===== Loading ===== */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 20px;
+}
+
+.loading-spinner {
+  width: 56px; height: 56px;
+  border: 5px solid #f3f4f6;
+  border-top-color: #667EAA;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .edit-container { padding: 24px 20px 80px; }
+  .edit-header { padding: 14px 20px; }
+  .edit-grid-2, .edit-grid-3 { grid-template-columns: 1fr; }
+  .edit-section { padding: 24px 18px; }
+  .edit-page-title { font-size: 28px; }
+  .edit-actions { flex-direction: column; }
+  .edit-cancel-btn, .edit-save-btn { width: 100%; text-align: center; }
+  .ing-builder { flex-direction: column; }
+  .ing-search-wrap, .ing-qty-input, .ing-unit-select, .ing-prep-input, .ing-add-btn { width: 100%; flex: none; }
+}

@@ -253,6 +253,7 @@ function RecipeDetail() {
   const rating = recipe.rating || 0;
   const baseServings = recipe.servings || 4;
   const isOwner = userData && recipe.owner_id === userData.id;
+  const canEdit = isOwner && (recipe.status === "pending" || recipe.status === null || recipe.status === undefined);
   const netVotes = upvotes - downvotes;
 
   return (
@@ -261,9 +262,19 @@ function RecipeDetail() {
         <button onClick={() => navigate(-1)} className="back-btn">← Back</button>
         <h1 className="header-logo">CookEase</h1>
         <div className="header-actions">
-          <button className="icon-btn" title="Share" onClick={handleShare}><span>⤴</span></button>
-          <button className="icon-btn" title="Print" onClick={() => window.print()}><span>🖨</span></button>
-          {isOwner && <Link to={`/edit-recipe/${recipe.id}`} className="icon-btn" title="Edit Recipe"><span>✏️</span></Link>}
+          <button className="icon-btn" title="Share" onClick={handleShare}><span>↗️</span></button>
+          <button className="icon-btn" title="Print" onClick={() => window.print()}><span>🖨️</span></button>
+            {isOwner && (
+              canEdit ? (
+                <Link to={`/edit-recipe/${recipe.id}`} className="icon-btn" title="Edit Recipe">
+                  <span>✏️</span>
+                </Link>
+              ) : (
+                <button className="icon-btn icon-btn-disabled" title="Cannot edit — recipe is already approved" disabled>
+                  <span>🔒</span>
+                </button>
+              )
+)}
         </div>
       </header>
 

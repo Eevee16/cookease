@@ -374,6 +374,12 @@
 }
 .recipe-note p { margin: 0; }
 
+.icon-btn-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f3f4f6;
+}
+
 .no-items { text-align: center; color: #9ca3af; padding: 60px 20px; font-style: italic; font-size: 16px; }
 
 /* ===== Loading & Not Found ===== */
