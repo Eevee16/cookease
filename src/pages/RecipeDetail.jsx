@@ -28,7 +28,6 @@ function RecipeDetail() {
   const [userVote, setUserVote] = useState(null);
   const [voteLoading, setVoteLoading] = useState(false);
 
-  // Fetch recipe from DB
   useEffect(() => {
     if (localMatch) return;
     const fetchRecipe = async () => {
@@ -43,7 +42,6 @@ function RecipeDetail() {
     fetchRecipe();
   }, [id, localMatch]);
 
-  // Fetch ingredient images
   useEffect(() => {
     if (!recipe) return;
     const fetchIngredientImages = async () => {
@@ -58,7 +56,6 @@ function RecipeDetail() {
     fetchIngredientImages();
   }, [recipe]);
 
-  // Check if saved
   useEffect(() => {
     const checkIfSaved = async () => {
       try {
@@ -71,7 +68,6 @@ function RecipeDetail() {
     checkIfSaved();
   }, [id]);
 
-  // Fetch votes
   useEffect(() => {
     const fetchVotes = async () => {
       try {
@@ -88,7 +84,6 @@ function RecipeDetail() {
     if (id) fetchVotes();
   }, [id, user]);
 
-  // View tracking
   useEffect(() => {
     if (!id) return;
     if (localMatch && typeof localMatch.id === "number") return;
@@ -96,7 +91,6 @@ function RecipeDetail() {
     if (sessionStorage.getItem(sessionKey)) return;
     if (hasTrackedView.current) return;
     hasTrackedView.current = true;
-
     const trackView = async () => {
       try {
         const { error } = await supabase.rpc("increment_view_count", { recipe_id: id });
@@ -111,7 +105,7 @@ function RecipeDetail() {
       }
     };
     trackView();
-  }, [id]);
+  }, [id, localMatch]);
 
   const handleVote = async (type) => {
     if (!user) { alert("Please log in to vote."); return; }
@@ -192,22 +186,41 @@ function RecipeDetail() {
     return [];
   };
 
+  // Full ingredient parser with quantity, unit, prep
   const parseIngredient = (str) => {
-    if (!str) return { raw: str, name: str, qty: "", prep: "" };
+    if (!str) return { raw: str, name: str, qty: "", unit: "", prep: "" };
+
     const prepMatch = str.match(/\(([^)]+)\)\s*$/);
     const prep = prepMatch ? prepMatch[1] : "";
     const withoutPrep = str.replace(/\s*\([^)]+\)\s*$/, "").trim();
-    const lower = withoutPrep.toLowerCase();
-    let matchedName = withoutPrep;
+
+    const units = ["cup", "cups", "tbsp", "tsp", "tablespoon", "tablespoons", "teaspoon", "teaspoons",
+                   "oz", "lb", "g", "kg", "ml", "l", "piece", "pieces", "pinch", "dash", "clove", "cloves"];
+
     let qty = "";
+    let unit = "";
+    let name = withoutPrep;
+
+    const qtyMatch = withoutPrep.match(/^([\d\/\.\s]+)\s*([a-z]+)?\s*(.+)$/i);
+    if (qtyMatch) {
+      qty = qtyMatch[1].trim();
+      const potentialUnit = qtyMatch[2] ? qtyMatch[2].toLowerCase() : "";
+      if (units.includes(potentialUnit)) {
+        unit = potentialUnit;
+        name = qtyMatch[3].trim();
+      } else {
+        name = (qtyMatch[2] + " " + qtyMatch[3]).trim();
+      }
+    }
+
     for (const knownName of Object.keys(ingredientImages)) {
-      if (lower.includes(knownName)) {
-        matchedName = knownName.charAt(0).toUpperCase() + knownName.slice(1);
-        qty = withoutPrep.replace(new RegExp(knownName, "i"), "").trim();
+      if (name.toLowerCase().includes(knownName)) {
+        name = knownName.charAt(0).toUpperCase() + knownName.slice(1);
         break;
       }
     }
-    return { raw: str, name: matchedName, qty, prep };
+
+    return { raw: str, name, qty, unit, prep };
   };
 
   const getIngredientImage = (name) => {
@@ -256,19 +269,42 @@ function RecipeDetail() {
 
       <div className="detail-hero">
         <div className="hero-container">
-          <div className="hero-image">
-            <img loading="lazy"
-              src={recipe.image_url || recipe.image || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Crect width='600' height='400' fill='%23e0e0e0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E"}
-              alt={recipe.title}
-            />
-            {rating > 0 && (
-              <div className="rating-badge">
-                <span className="rating-star">★</span>
-                <span className="rating-value">{rating.toFixed(1)}</span>
+
+          {/* LEFT: Image + compact vote strip beneath */}
+          <div className="hero-image-col">
+            <div className="hero-image">
+              <img loading="lazy"
+                src={recipe.image_url || recipe.image || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Crect width='600' height='400' fill='%23e0e0e0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E"}
+                alt={recipe.title}
+              />
+              {rating > 0 && (
+                <div className="rating-badge">
+                  <span className="rating-star">★</span>
+                  <span className="rating-value">{rating.toFixed(1)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Compact vote strip with labels */}
+            <div className="image-vote-row">
+              <div className="detail-vote-box">
+                <div className="vote-col">
+                  <button className={`detail-vote-btn upvote ${userVote === "up" ? "active" : ""}`} onClick={() => handleVote("up")} disabled={voteLoading}>▲ {upvotes}</button>
+                  <span className="vote-col-label">Helpful</span>
+                </div>
+                <div className="net-votes-col">
+                  <span className={`net-votes ${netVotes > 0 ? "positive" : netVotes < 0 ? "negative" : ""}`}>{netVotes > 0 ? `+${netVotes}` : netVotes}</span>
+                  <span className="vote-col-label">Score</span>
+                </div>
+                <div className="vote-col">
+                  <button className={`detail-vote-btn downvote ${userVote === "down" ? "active" : ""}`} onClick={() => handleVote("down")} disabled={voteLoading}>▼ {downvotes}</button>
+                  <span className="vote-col-label">Not for me</span>
+                </div>
               </div>
-            )}
+            </div>
           </div>
 
+          {/* RIGHT: Recipe info + save/pdf buttons */}
           <div className="hero-content">
             <div className="recipe-category">{recipe.cuisine || "World"} • {recipe.category || "Main Course"}</div>
             <h1 className="detail-title">{recipe.title}</h1>
@@ -289,12 +325,8 @@ function RecipeDetail() {
               <div className="info-card"><span className="info-icon">🔥</span><div className="info-content"><span className="info-label">Difficulty</span><span className="info-value">{recipe.difficulty || "Medium"}</span></div></div>
             </div>
 
+            {/* Save + PDF — original style */}
             <div className="recipe-btn-row">
-              <div className="detail-vote-box">
-                <button className={`detail-vote-btn upvote ${userVote === "up" ? "active" : ""}`} onClick={() => handleVote("up")} disabled={voteLoading}>▲ {upvotes}</button>
-                <span className={`net-votes ${netVotes > 0 ? "positive" : netVotes < 0 ? "negative" : ""}`}>{netVotes > 0 ? `+${netVotes}` : netVotes}</span>
-                <button className={`detail-vote-btn downvote ${userVote === "down" ? "active" : ""}`} onClick={() => handleVote("down")} disabled={voteLoading}>▼ {downvotes}</button>
-              </div>
               <button className={`save-btn ${isSaved ? "saved" : ""}`} onClick={handleSaveRecipe} disabled={saveLoading}>
                 {saveLoading ? "⏳ Saving..." : isSaved ? "✓ Saved" : "🔖 Save Recipe"}
               </button>
@@ -305,6 +337,7 @@ function RecipeDetail() {
               )}
             </div>
           </div>
+
         </div>
       </div>
 
@@ -320,28 +353,66 @@ function RecipeDetail() {
         {activeTab === "ingredients" && (
           <div className="content-card">
             <h2 className="section-title">What You'll Need</h2>
-            <div className="ingredients-list">
-              {ingredients.length > 0 ? ingredients.map((ingredient, index) => {
-                const parsed = parseIngredient(ingredient);
-                const imgUrl = getIngredientImage(parsed.name);
-                return (
-                  <label key={index} className={`ingredient-item ${checkedIngredients[index] ? "checked" : ""}`}>
-                    <input type="checkbox" checked={checkedIngredients[index] || false} onChange={() => toggleIngredient(index)} />
-                    <div className="ingredient-row">
-                      <div className="ingredient-img-wrap">
-                        {imgUrl ? <img src={imgUrl} alt={parsed.name} className="ingredient-thumb" onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} /> : null}
-                        <div className="ingredient-thumb-fallback" style={{ display: imgUrl ? "none" : "flex" }}>🥄</div>
-                      </div>
-                      <div className="ingredient-details">
-                        <span className="ingredient-name-text">{parsed.name}</span>
-                        {parsed.qty && <span className="ingredient-qty-text">{parsed.qty}</span>}
-                        {parsed.prep && <span className="ingredient-prep-text">{parsed.prep}</span>}
-                        {!parsed.qty && !parsed.prep && <span className="ingredient-qty-text">{parsed.raw}</span>}
-                      </div>
-                    </div>
-                  </label>
-                );
-              }) : <p className="no-items">No ingredients listed</p>}
+            <div className="ingredients-table-container">
+              <table className="ingredients-table">
+                <thead>
+                  <tr>
+                    <th className="col-check"></th>
+                    <th className="col-ingredient">Ingredient</th>
+                    <th className="col-quantity">Quantity</th>
+                    <th className="col-unit">Unit</th>
+                    <th className="col-prep">Preparation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ingredients.length > 0 ? (
+                    ingredients.map((ingredient, index) => {
+                      const parsed = parseIngredient(ingredient);
+                      const imgUrl = getIngredientImage(parsed.name);
+                      return (
+                        <tr
+                          key={index}
+                          className={checkedIngredients[index] ? "checked" : ""}
+                          onClick={() => toggleIngredient(index)}
+                        >
+                          <td className="col-check">
+                            <input
+                              type="checkbox"
+                              checked={checkedIngredients[index] || false}
+                              onChange={() => toggleIngredient(index)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </td>
+                          <td className="col-ingredient">
+                            <div className="ingredient-cell">
+                              <div className="ingredient-img-wrap">
+                                {imgUrl ? (
+                                  <img
+                                    src={imgUrl}
+                                    alt={parsed.name}
+                                    className="ingredient-thumb"
+                                    onError={(e) => {
+                                      e.target.style.display = "none";
+                                      e.target.nextSibling.style.display = "flex";
+                                    }}
+                                  />
+                                ) : null}
+                                <div className="ingredient-thumb-fallback" style={{ display: imgUrl ? "none" : "flex" }}>🥄</div>
+                              </div>
+                              <span className="ingredient-name">{parsed.name}</span>
+                            </div>
+                          </td>
+                          <td className="col-quantity">{parsed.qty || "—"}</td>
+                          <td className="col-unit">{parsed.unit || "—"}</td>
+                          <td className="col-prep">{parsed.prep || "—"}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr><td colSpan="5" className="no-ingredients">No ingredients listed</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

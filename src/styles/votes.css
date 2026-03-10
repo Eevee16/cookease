@@ -1,7 +1,4 @@
-/* =============================================
-   Add these styles to RecipeCard.css
-   and RecipeDetail.css
-   ============================================= */
+/* votes.css */
 
 /* === RecipeCard vote buttons === */
 .recipe-card-votes {
@@ -29,23 +26,9 @@
   line-height: 1;
 }
 
-.vote-btn:hover:not(:disabled) {
-  border-color: #d1d5db;
-  background: #f9fafb;
-}
-
-.vote-btn.upvote.active {
-  background: #fff7ed;
-  border-color: #f97316;
-  color: #f97316;
-}
-
-.vote-btn.downvote.active {
-  background: #fef2f2;
-  border-color: #ef4444;
-  color: #ef4444;
-}
-
+.vote-btn:hover:not(:disabled) { border-color: #d1d5db; background: #f9fafb; }
+.vote-btn.upvote.active { background: #fff7ed; border-color: #f97316; color: #f97316; }
+.vote-btn.downvote.active { background: #fef2f2; border-color: #ef4444; color: #ef4444; }
 .vote-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .vote-score {
@@ -56,48 +39,66 @@
   text-align: center;
 }
 
-/* === RecipeDetail vote group === */
-.detail-vote-group {
-  display: flex;
+/* === RecipeDetail compact vote box (under image) === */
+.detail-vote-box {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 20px;
   background: #f9fafb;
   border: 1.5px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 6px 14px;
+  border-radius: 14px;
+  padding: 10px 20px;
+}
+
+.vote-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.net-votes-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 20px;
+  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+}
+
+.vote-col-label {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .detail-vote-btn {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
   color: #9ca3af;
-  padding: 4px 8px;
+  padding: 6px 14px;
   border-radius: 8px;
   transition: all 0.2s;
   line-height: 1;
 }
 
-.detail-vote-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.detail-vote-btn.upvote.active { color: #f97316; }
-.detail-vote-btn.downvote.active { color: #ef4444; }
+.detail-vote-btn:hover:not(:disabled) { background: #f3f4f6; color: #374151; }
+.detail-vote-btn.upvote.active  { color: #f97316; background: #fff7ed; }
+.detail-vote-btn.downvote.active { color: #ef4444; background: #fef2f2; }
 .detail-vote-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.detail-vote-score {
-  font-size: 18px;
+.net-votes {
+  font-size: 16px;
   font-weight: 800;
-  color: #1f2937;
+  color: #6b7280;
   min-width: 28px;
   text-align: center;
 }
 
-.detail-vote-counts {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-left: 4px;
-}
+.net-votes.positive { color: #10b981; }
+.net-votes.negative { color: #ef4444; }

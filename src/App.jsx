@@ -24,6 +24,7 @@ import ContactUs from "./pages/ContactUs";
 import AdminApproval from "./pages/AdminApproval";
 import AdminStats from "./pages/AdminStats";
 import UserPunishment from "./pages/UserPunishment";
+import BanChecker from './components/BanChecker';
 
 function App() {
   useEffect(() => {
@@ -41,6 +42,7 @@ function App() {
 
   return (
     <RoleProvider>
+      <BanChecker />
       <Layout>
         <Routes>
           {/* ✅ Landing page is now the root */}
