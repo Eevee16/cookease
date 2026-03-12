@@ -57,7 +57,7 @@ function LandingPage() {
           <div className="hero-cta">
             {user ? (
               <>
-                <button className="btn-primary" onClick={() => navigate("/")}>Browse Recipes</button>
+                <button className="btn-primary" onClick={() => navigate("home")}>Browse Recipes</button>
                 <button className="btn-ghost" onClick={() => navigate("/add-recipe")}>+ Add Your Recipe</button>
               </>
             ) : (
