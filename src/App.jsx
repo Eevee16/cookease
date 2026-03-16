@@ -14,7 +14,6 @@ import Login from "./components/Auth/Login.jsx";
 import SearchByIngredients from "./pages/SearchByIngredients.jsx";
 import ModeratorDashboard from "./pages/ModeratorDashboard.jsx";
 import SearchByCourseCuisine from "./pages/SearchByCourseCuisine.jsx";
-import ResetPassword from "./components/Auth/ResetPassword.jsx";
 import Profile from "./pages/Profile.jsx";
 import MyRecipes from "./pages/MyRecipes.jsx";
 import SearchResults from "./pages/SearchResults";
@@ -26,7 +25,7 @@ import AdminStats from "./pages/AdminStats";
 import UserPunishment from "./pages/UserPunishment";
 import BanChecker from './components/BanChecker';
 import EditRecipe from "./pages/EditRecipe.jsx";
-
+import ResetPassword from './components/Auth/ResetPassword'
 
 
 function App() {
