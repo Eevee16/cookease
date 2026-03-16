@@ -34,12 +34,26 @@ function Login() {
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       })
 
       if (error) throw error
+
+      const confirmed = !!(
+        data?.user?.email_confirmed_at ||
+        data?.user?.confirmed_at ||
+        data?.user?.email_confirmed
+      )
+
+      if (!confirmed) {
+        // Ensure we don't keep an unauthenticated session
+        await supabase.auth.signOut()
+        setError('Please verify your email before logging in')
+        setLoading(false)
+        return
+      }
 
       const from = location.state?.from?.pathname || '/'
       navigate(from, { replace: true })

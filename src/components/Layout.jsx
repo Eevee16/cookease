@@ -204,10 +204,12 @@ function Layout({ children }) {
               onMouseEnter={() => setShowRecipesDropdown(true)}
               onMouseLeave={() => setShowRecipesDropdown(false)}
             >
-              <button className="dropdown-btn">Discover ▼</button>
+              <button className="dropdown-btn" onClick={() => setShowRecipesDropdown(prev => !prev)}>
+                Discover ▼
+              </button>
               <div className={`dropdown-content ${showRecipesDropdown ? "show" : ""}`}>
-                <Link to="/search-course-cuisine">By Course</Link>
-                <Link to="/search-ingredients">By Ingredients</Link>
+                <Link to="/search-course-cuisine" onClick={() => setShowRecipesDropdown(false)}>By Course</Link>
+                <Link to="/search-ingredients" onClick={() => setShowRecipesDropdown(false)}>By Ingredients</Link>
               </div>
             </div>
 

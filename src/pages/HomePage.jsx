@@ -22,7 +22,7 @@ function HomePage() {
         setLoading(true);
 
         // Fetch approved and done recipes
-        const { data, error } = await supabase
+        const { data: recipesData, error } = await supabase
           .from("recipes")
           .select("*")
           .in("status", ["approved", "done"])
@@ -30,8 +30,44 @@ function HomePage() {
 
         if (error) throw error;
 
-        setRecipes(data || []);
-        setFilteredRecipes(data || []);
+        const recipes = recipesData || [];
+
+        // Load owner profile info so we can show profile photos on recipe cards
+        const ownerIds = [...new Set(recipes.map(r => r.owner_id).filter(Boolean))];
+        let ownerMap = {};
+
+        if (ownerIds.length) {
+          const { data: profiles, error: profileError } = await supabase
+            .from("profiles")
+            .select("id, first_name, last_name, name, email, photo_url")
+            .in("id", ownerIds);
+
+          if (profileError) {
+            console.warn("Failed to load profile data for recipes:", profileError);
+          } else {
+            ownerMap = (profiles || []).reduce((acc, p) => {
+              const firstLast = [p.first_name, p.last_name].filter(Boolean).join(" ");
+              const displayName = firstLast || p.name || p.email || "Unknown";
+              acc[p.id] = {
+                displayName,
+                photoUrl: p.photo_url || null
+              };
+              return acc;
+            }, {});
+          }
+        }
+
+        const normalized = recipes.map(r => {
+          const owner = ownerMap[r.owner_id];
+          return {
+            ...r,
+            owner_name: owner?.displayName || r.owner_name || "Unknown",
+            owner_photo: owner?.photoUrl || null
+          };
+        });
+
+        setRecipes(normalized);
+        setFilteredRecipes(normalized);
       } catch (err) {
         console.error("Failed to load recipes:", err);
       } finally {

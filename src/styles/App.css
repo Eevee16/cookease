@@ -339,11 +339,12 @@ body {
   margin: 0;
 }
 
-/* Recipe Grid */
+/* Recipe Grid - UPDATED FOR CONSISTENT CARD HEIGHTS */
 .recipe-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 28px;
+  grid-auto-rows: 1fr; /* 🎯 KEY FIX - Makes all cards in each row the same height */
 }
 
 /* Empty State */
@@ -453,6 +454,7 @@ body {
 
   .recipe-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
   }
 }
 
@@ -471,6 +473,7 @@ body {
 
   .recipe-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .nav {

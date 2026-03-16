@@ -691,26 +691,109 @@
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .profile-page {
     padding: 16px;
   }
 
+  .profile-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .back-link {
+    font-size: 13px;
+  }
+
+  .sign-out-btn {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
   .profile-card {
+    padding: 24px;
     flex-direction: column;
     text-align: center;
+    gap: 20px;
+  }
+
+  .profile-avatar,
+  .profile-avatar-placeholder {
+    width: 100px;
+    height: 100px;
+  }
+
+  .profile-avatar-placeholder {
+    font-size: 40px;
+  }
+
+  .edit-avatar-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
   }
 
   .profile-name {
     font-size: 24px;
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .profile-email {
+    font-size: 15px;
   }
 
-  .recipes-grid {
+  .role-badge {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
+
+  .no-profile-badge {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .edit-profile-btn {
+    padding: 9px 18px;
+    font-size: 13px;
+  }
+
+  .stats-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .stat-icon {
+    font-size: 28px;
+  }
+
+  .stat-number {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+  }
+
+  .quick-actions {
+    gap: 10px;
+  }
+
+  .action-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  .recipes-section {
+    padding: 20px;
+  }
+
+  .section-title {
+    font-size: 20px;
   }
 
   .filter-tabs {
@@ -722,10 +805,58 @@
     font-size: 13px;
   }
 
+  .recipes-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .recipe-info {
+    padding: 14px;
+  }
+
+  .recipe-title {
+    font-size: 16px;
+  }
+
+  .recipe-meta {
+    font-size: 13px;
+  }
+
+  .status-badge {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .rejection-notice {
+    font-size: 12px;
+    padding: 7px 10px;
+  }
+
+  .recipe-footer {
+    font-size: 12px;
+  }
+
+  .empty-state {
+    padding: 50px 16px;
+  }
+
+  .empty-icon {
+    font-size: 56px;
+  }
+
+  .empty-message {
+    font-size: 16px;
+  }
+
+  .empty-action-btn {
+    padding: 10px 20px;
+  }
+
   /* Modal Responsive */
   .modal-content {
-    margin: 1rem;
-    max-height: calc(100vh - 2rem);
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+    border-radius: 12px;
   }
 
   .modal-header {
@@ -736,16 +867,114 @@
     font-size: 20px;
   }
 
+  .modal-close {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+  }
+
   .edit-profile-form {
     padding: 16px;
   }
 
+  .form-group label {
+    font-size: 13px;
+  }
+
+  .form-group input {
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+
+  .form-help {
+    font-size: 12px;
+  }
+
   .modal-actions {
+    padding: 16px;
     flex-direction: column;
+    gap: 10px;
   }
 
   .btn-cancel,
   .btn-save {
-    width: 100%;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .profile-page {
+    padding: 20px;
+  }
+
+  .profile-card {
+    padding: 28px;
+    gap: 22px;
+  }
+
+  .profile-avatar,
+  .profile-avatar-placeholder {
+    width: 110px;
+    height: 110px;
+  }
+
+  .profile-avatar-placeholder {
+    font-size: 44px;
+  }
+
+  .profile-name {
+    font-size: 28px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .recipes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+  }
+
+  .modal-content {
+    max-width: 480px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .profile-page {
+    padding: 24px;
+  }
+
+  .profile-card {
+    padding: 32px;
+    gap: 24px;
+  }
+
+  .profile-avatar,
+  .profile-avatar-placeholder {
+    width: 120px;
+    height: 120px;
+  }
+
+  .profile-avatar-placeholder {
+    font-size: 48px;
+  }
+
+  .profile-name {
+    font-size: 32px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .recipes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .modal-content {
+    max-width: 500px;
   }
 }

@@ -20,7 +20,16 @@
   padding: 16px 24px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 24px;
+}
+
+/* Expand the search bar so nav items spread wider */
+.search-bar {
+  flex: 1;
+  max-width: 500px;
+  display: flex;
+  gap: 8px;
 }
 
 .menu-btn {
@@ -176,15 +185,28 @@
 }
 
 /* Action Links */
+.nav-link,
+.add-recipe-link,
+.admin-link,
+.moderator-link,
+.user-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
 .add-recipe-link {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white !important;
-  text-decoration: none;
-  padding: 8px 16px;
-  border-radius: 8px;
   font-weight: 700;
-  font-size: 14px;
-  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);

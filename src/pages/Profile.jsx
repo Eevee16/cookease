@@ -316,6 +316,20 @@ function Profile() {
     }
   };
 
+  const getRoleBadge = () => {
+    if (!profileData?.role) return null;
+
+    const role = profileData.role.toLowerCase();
+    const badgeMap = {
+      admin: { label: "👑 Admin", className: "admin" },
+      moderator: { label: "⭐ Moderator", className: "moderator" },
+      user: { label: "👤 User", className: "user" },
+    };
+
+    const { label, className } = badgeMap[role] || { label: role, className: role };
+    return <span className={`role-badge ${className}`}>{label}</span>;
+  };
+
   const filteredRecipes = activeTab === "recipes" 
     ? userRecipes 
     : userRecipes.filter(r => r.status === activeTab);
@@ -399,9 +413,9 @@ function Profile() {
           
           <div className="profile-badges">
             {profileData ? (
-              profileData.role && (
-                <span className={`role-badge ${profileData.role}`}>
-                  {profileData.role === 'moderator' ? '⭐ Moderator' : '👤 User'}
+              getRoleBadge() || (
+                <span className="no-profile-badge">
+                  You haven't set up a profile yet.
                 </span>
               )
             ) : (

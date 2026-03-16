@@ -15,6 +15,8 @@ const UNITS = ["pcs", "cups", "tbsp", "tsp", "g", "kg", "ml", "L", "oz", "lb", "
 const PREP_SUGGESTIONS = ["minced", "chopped", "sliced", "diced", "thinly sliced", "roughly chopped", "finely chopped", "beaten", "room temperature", "melted", "softened", "peeled", "grated", "julienned", "halved", "quartered", "crushed"];
 
 const STORAGE_KEY = "addRecipe_formData";
+const IMAGE_PREVIEW_KEY = "addRecipe_imagePreview";
+const IMAGE_META_KEY = "addRecipe_imageMeta";
 
 const defaultFormData = {
   title: "", category: "", cuisine: "", difficulty: "",
@@ -45,6 +47,25 @@ function AddRecipe() {
     }
   });
 
+  // persist image preview (data URL) so it survives tab discards / reloads
+  const [imagePreview, setImagePreview] = useState(() => {
+    try {
+      return localStorage.getItem(IMAGE_PREVIEW_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+
+  // Store enough metadata to reconstruct a File for upload after a page reload
+  const [imageMeta, setImageMeta] = useState(() => {
+    try {
+      const saved = localStorage.getItem(IMAGE_META_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   // ✅ Save to localStorage whenever formData changes
   useEffect(() => {
     try {
@@ -54,8 +75,33 @@ function AddRecipe() {
     }
   }, [formData]);
 
+  // Persist image preview so it survives tab discards / reloads (file inputs cannot be prefilled)
+  useEffect(() => {
+    try {
+      if (imagePreview) {
+        localStorage.setItem(IMAGE_PREVIEW_KEY, imagePreview);
+      } else {
+        localStorage.removeItem(IMAGE_PREVIEW_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [imagePreview]);
+
+  // Persist image metadata so we can recreate the File object for upload
+  useEffect(() => {
+    try {
+      if (imageMeta) {
+        localStorage.setItem(IMAGE_META_KEY, JSON.stringify(imageMeta));
+      } else {
+        localStorage.removeItem(IMAGE_META_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [imageMeta]);
+
   const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -148,11 +194,24 @@ function AddRecipe() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { alert("Please upload an image file"); return; }
+
     try {
       const compressed = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true });
       setImageFile(compressed);
-      setImagePreview(URL.createObjectURL(compressed));
-    } catch { alert("Failed to process image."); }
+      setImageMeta({
+        name: compressed.name || file.name,
+        type: compressed.type || file.type,
+      });
+
+      // Use a data URL so the preview can be restored if the tab reloads or is discarded
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreview(reader.result || "");
+      };
+      reader.readAsDataURL(compressed);
+    } catch {
+      alert("Failed to process image.");
+    }
   };
 
   const handleInstructionChange = (i, v) => {
@@ -207,7 +266,7 @@ function AddRecipe() {
           slug: `${slugify(cleaned.title)}-${crypto.randomUUID().slice(0, 6)}`,
           image_url: "",
           owner_id: user.id,
-          owner_name: fullName || user.email,
+          owner_name: fullName || "Unknown",
           rating: 0,
           status: "pending"
         }])
@@ -215,12 +274,21 @@ function AddRecipe() {
 
       if (insertError) throw insertError;
 
-      if (imageFile) {
+      // If the user left and returned (or the tab was discarded), we may not have the File object anymore,
+      // but we can rebuild it from the saved data URL and metadata.
+      let fileToUpload = imageFile;
+      if (!fileToUpload && imagePreview && imageMeta?.name && imageMeta?.type) {
+        const res = await fetch(imagePreview);
+        const blob = await res.blob();
+        fileToUpload = new File([blob], imageMeta.name, { type: imageMeta.type });
+      }
+
+      if (fileToUpload) {
         setUploading(true);
         try {
-          const ext = imageFile.name.split(".").pop();
+          const ext = fileToUpload.name.split(".").pop();
           const filePath = `${recipe.id}/main.${ext}`;
-          const { error: uploadError } = await supabase.storage.from("recipes").upload(filePath, imageFile, { cacheControl: "3600", upsert: true });
+          const { error: uploadError } = await supabase.storage.from("recipes").upload(filePath, fileToUpload, { cacheControl: "3600", upsert: true });
           if (uploadError) throw uploadError;
           const { data } = supabase.storage.from("recipes").getPublicUrl(filePath);
           await supabase.from("recipes").update({ image_url: data.publicUrl }).eq("id", recipe.id);
@@ -229,6 +297,8 @@ function AddRecipe() {
 
       // ✅ Clear saved draft after successful submission
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(IMAGE_PREVIEW_KEY);
+      localStorage.removeItem(IMAGE_META_KEY);
 
       alert("Recipe submitted for approval!");
       navigate("/");
@@ -334,7 +404,7 @@ function AddRecipe() {
                   {imagePreview ? (
                     <div className="image-preview-wrapper">
                       <img src={imagePreview} alt="Preview" className="image-preview" />
-                      <button type="button" className="remove-image-btn" onClick={(e) => { e.preventDefault(); setImageFile(null); setImagePreview(""); }}>
+                      <button type="button" className="remove-image-btn" onClick={(e) => { e.preventDefault(); setImageFile(null); setImagePreview(""); setImageMeta(null); }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                       </button>
                     </div>

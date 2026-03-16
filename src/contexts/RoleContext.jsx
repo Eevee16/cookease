@@ -1,9 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { createContext, useContext, useState, useEffect } from "react";
-
-const supabaseUrl = "https://nrorypixaucxuoculxta.supabase.co"; // 🔒 Use your Supabase URL
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yb3J5cGl4YXVjeHVvY3VseHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0ODgxOTcsImV4cCI6MjA4NTA2NDE5N30.BW-Nh1AX2vqdg8OdsVEenl3f4eJ1s3iQC4C64pIC7z8"; // 🔒 Use anon key in frontend
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from "../supabaseClient"; // reuse single client instance
 
 const RoleContext = createContext();
 
@@ -67,7 +63,7 @@ export function RoleProvider({ children }) {
         // ✅ Build full name
         const fn = data?.first_name || "";
         const ln = data?.last_name || "";
-        setFullName([fn, ln].filter(Boolean).join(" ") || user.email || "");
+        setFullName([fn, ln].filter(Boolean).join(" ") || "");
 
       } catch (err) {
         console.error("Error fetching profile:", err.message || err);
@@ -75,7 +71,7 @@ export function RoleProvider({ children }) {
         setRole(null);
         setIsAdmin(false);
         setIsModerator(false);
-        setFullName(user.email || "");
+        setFullName("");
       } finally {
         setLoading(false);
       }

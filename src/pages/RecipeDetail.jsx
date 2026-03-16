@@ -27,6 +27,7 @@ function RecipeDetail() {
   const [downvotes, setDownvotes] = useState(0);
   const [userVote, setUserVote] = useState(null);
   const [voteLoading, setVoteLoading] = useState(false);
+  const [ownerPhoto, setOwnerPhoto] = useState(null);
 
   useEffect(() => {
     if (localMatch) return;
@@ -41,6 +42,29 @@ function RecipeDetail() {
     };
     fetchRecipe();
   }, [id, localMatch]);
+
+  // Fetch owner profile photo
+  useEffect(() => {
+    if (!recipe || !recipe.owner_id) return;
+    
+    const fetchOwnerProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("photo_url")
+          .eq("id", recipe.owner_id)
+          .single();
+        
+        if (!error && data) {
+          setOwnerPhoto(data.photo_url);
+        }
+      } catch (err) {
+        console.error("Error fetching owner profile:", err);
+      }
+    };
+    
+    fetchOwnerProfile();
+  }, [recipe]);
 
   useEffect(() => {
     if (!recipe) return;
@@ -320,7 +344,23 @@ function RecipeDetail() {
             <div className="recipe-category">{recipe.cuisine || "World"} • {recipe.category || "Main Course"}</div>
             <h1 className="detail-title">{recipe.title}</h1>
             <div className="author-info">
-              <div className="author-avatar">{recipe.owner_name ? recipe.owner_name[0].toUpperCase() : "U"}</div>
+              {ownerPhoto ? (
+                <img 
+                  src={ownerPhoto} 
+                  alt={recipe.owner_name || "User"} 
+                  className="author-avatar-image"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div 
+                className="author-avatar" 
+                style={{ display: ownerPhoto ? 'none' : 'flex' }}
+              >
+                {recipe.owner_name ? recipe.owner_name[0].toUpperCase() : "U"}
+              </div>
               <div className="author-details">
                 <p className="author-label">Recipe by</p>
                 <p className="author-name">{recipe.owner_name || "Anonymous"}</p>
