@@ -18,6 +18,147 @@
     max-width: 450px;
 }
 
+/* Ban Alert Container */
+.ban-alert {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border: 2px solid;
+  animation: slideDown 0.3s ease-out;
+}
+ 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+ 
+/* Permanent Ban Alert */
+.ban-alert-permanent {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+ 
+/* Temporary Ban Alert */
+.ban-alert-temporary {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+ 
+/* Ban Alert Icon */
+.ban-alert-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+ 
+/* Ban Alert Content */
+.ban-alert-content {
+  flex: 1;
+}
+ 
+.ban-alert-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+ 
+.ban-alert-message {
+  font-size: 14px;
+  color: #374151;
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+}
+ 
+/* Ban Alert Details (for temporary bans) */
+.ban-alert-details {
+  background: rgba(255, 255, 255, 0.5);
+  padding: 12px;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+ 
+.ban-alert-details p {
+  font-size: 13px;
+  color: #374151;
+  margin: 0 0 6px 0;
+  font-weight: 600;
+}
+ 
+.ban-alert-details p:last-child {
+  margin-bottom: 0;
+}
+ 
+.ban-alert-details strong {
+  color: #1f2937;
+  font-weight: 700;
+}
+ 
+/* Ban Alert Reason */
+.ban-alert-reason {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  margin: 12px 0;
+}
+ 
+.ban-alert-reason strong {
+  color: #1f2937;
+  font-weight: 700;
+}
+ 
+/* Ban Alert Support Message */
+.ban-alert-support {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 12px 0 0 0;
+  font-style: italic;
+}
+ 
+/* Responsive - Mobile */
+@media (max-width: 767px) {
+  .ban-alert {
+    flex-direction: column;
+    padding: 16px;
+    gap: 12px;
+  }
+ 
+  .ban-alert-icon {
+    font-size: 28px;
+    text-align: center;
+  }
+ 
+  .ban-alert-title {
+    font-size: 16px;
+    text-align: center;
+  }
+ 
+  .ban-alert-message {
+    font-size: 13px;
+    text-align: center;
+  }
+ 
+  .ban-alert-details,
+  .ban-alert-reason {
+    font-size: 12px;
+  }
+ 
+  .ban-alert-support {
+    font-size: 12px;
+    text-align: center;
+  }
+}
+
 /* ================================
    Header & Logo
 ================================ */

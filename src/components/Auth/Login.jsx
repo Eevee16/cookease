@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
-import { supabase } from '../../supabaseClient' // Fixed import path
+import { supabase } from '../../supabaseClient'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import '../../styles/Auth.css'
 
@@ -12,6 +12,7 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [banInfo, setBanInfo] = useState(null)
 
   const [showForgotModal, setShowForgotModal] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
@@ -21,9 +22,23 @@ function Login() {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
+  const formatTimeRemaining = (now, until) => {
+    const diff = until - now
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const days = Math.floor(hours / 24)
+    
+    if (days > 0) {
+      const remainingHours = hours % 24
+      return `${days} day${days > 1 ? 's' : ''}${remainingHours > 0 ? ` and ${remainingHours} hour${remainingHours > 1 ? 's' : ''}` : ''}`
+    }
+    
+    return `${hours} hour${hours > 1 ? 's' : ''}`
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setBanInfo(null)
     setLoading(true)
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -34,12 +49,12 @@ function Login() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       })
 
-      if (error) throw error
+      if (authError) throw authError
 
       const confirmed = !!(
         data?.user?.email_confirmed_at ||
@@ -48,15 +63,88 @@ function Login() {
       )
 
       if (!confirmed) {
-        // Ensure we don't keep an unauthenticated session
         await supabase.auth.signOut()
         setError('Please verify your email before logging in')
         setLoading(false)
         return
       }
 
+      // ✅ CHECK BAN STATUS AFTER SUCCESSFUL AUTH
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, status, ban_until, ban_reason")
+        .eq("id", data.user.id)
+        .single()
+
+      if (profileError) {
+        console.error("Profile fetch error:", profileError)
+        // If we can't fetch profile, allow login but log the error
+        const from = location.state?.from?.pathname || '/'
+        navigate(from, { replace: true })
+        return
+      }
+
+      // ✅ PERMANENT BAN - Sign out and show message
+      if (profile.status === "banned") {
+        await supabase.auth.signOut()
+        
+        setBanInfo({
+          type: "permanent",
+          reason: profile.ban_reason || "Your account has been permanently banned.",
+          message: "Your account has been permanently suspended. If you believe this is a mistake, please contact support."
+        })
+        setLoading(false)
+        return
+      }
+
+      // ✅ TEMPORARY BAN - Check if expired
+      if (profile.status === "tempbanned") {
+        const banUntil = new Date(profile.ban_until)
+        const now = new Date()
+
+        // If ban has expired, auto-unban them
+        if (banUntil <= now) {
+          await supabase
+            .from("profiles")
+            .update({
+              status: "active",
+              ban_until: null,
+              ban_reason: null
+            })
+            .eq("id", profile.id)
+
+          // Allow them to proceed
+          const from = location.state?.from?.pathname || '/'
+          navigate(from, { replace: true })
+          return
+        }
+
+        // Ban is still active - sign them out
+        await supabase.auth.signOut()
+
+        const timeRemaining = formatTimeRemaining(now, banUntil)
+        
+        setBanInfo({
+          type: "temporary",
+          reason: profile.ban_reason || "Your account has been temporarily suspended.",
+          until: banUntil.toLocaleString("en-PH", { 
+            dateStyle: "long", 
+            timeStyle: "short" 
+          }),
+          remaining: timeRemaining,
+          message: `Your account is temporarily suspended until ${banUntil.toLocaleString("en-PH", { 
+            dateStyle: "long", 
+            timeStyle: "short" 
+          })}.`
+        })
+        setLoading(false)
+        return
+      }
+
+      // ✅ USER IS NOT BANNED - Proceed with login
       const from = location.state?.from?.pathname || '/'
       navigate(from, { replace: true })
+
     } catch (err) {
       if (err.message === 'Invalid login credentials')
         setError('Incorrect email or password')
@@ -64,7 +152,6 @@ function Login() {
         setError('Please verify your email before logging in')
       else
         setError('Login failed. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
@@ -108,8 +195,41 @@ function Login() {
           <p className="auth-subtitle">Welcome back!</p>
         </div>
 
+        {/* ✅ BAN NOTIFICATION */}
+        {banInfo && (
+          <div className={`ban-alert ${banInfo.type === "permanent" ? "ban-alert-permanent" : "ban-alert-temporary"}`}>
+            <div className="ban-alert-icon">
+              {banInfo.type === "permanent" ? "🚫" : "🕐"}
+            </div>
+            <div className="ban-alert-content">
+              <h3 className="ban-alert-title">
+                {banInfo.type === "permanent" 
+                  ? "Account Permanently Banned" 
+                  : "Account Temporarily Suspended"}
+              </h3>
+              <p className="ban-alert-message">{banInfo.message}</p>
+              {banInfo.type === "temporary" && (
+                <div className="ban-alert-details">
+                  <p><strong>Time Remaining:</strong> {banInfo.remaining}</p>
+                  <p><strong>Access Restored:</strong> {banInfo.until}</p>
+                </div>
+              )}
+              {banInfo.reason && (
+                <div className="ban-alert-reason">
+                  <strong>Reason:</strong> {banInfo.reason}
+                </div>
+              )}
+              {banInfo.type === "permanent" && (
+                <p className="ban-alert-support">
+                  If you believe this is a mistake, please contact support at support@cookease.com
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         <form className="auth-form" onSubmit={handleSubmit}>
-          {error && <div className="auth-error">{error}</div>}
+          {error && !banInfo && <div className="auth-error">{error}</div>}
 
           <div className="form-group">
             <label htmlFor="email">Email</label>
