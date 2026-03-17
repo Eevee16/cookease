@@ -174,7 +174,7 @@ function Login() {
       const { error } = await supabase.auth.resetPasswordForEmail(
         forgotEmail,
         {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/reset-password`,
         }
       )
 

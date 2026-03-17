@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../../styles/Auth.css';
 import { supabase } from '../../supabaseClient';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 function Signup() {
   const navigate = useNavigate();
@@ -72,8 +73,9 @@ function Signup() {
         newErrors.password = 'Password must be at least 6 characters';
       } else if (!/(?=.*[a-z])/.test(formData.password) ||
                  !/(?=.*[A-Z])/.test(formData.password) ||
-                 !/(?=.*\d)/.test(formData.password)) {
-        newErrors.password = 'Password must include uppercase, lowercase, and a number';
+                 !/(?=.*\d)/.test(formData.password) ||
+                 !/(?=.*[@$!%*?&])/.test(formData.password)) {
+        newErrors.password = 'Password must include uppercase, lowercase, number, and special character';
       }
     } else {
       setPasswordStrength(0);
@@ -103,7 +105,7 @@ function Signup() {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/login`,
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName
@@ -235,11 +237,11 @@ function Signup() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="At least 6 characters"
+                placeholder="At least 6 chars, 1 uppercase, 1 lowercase, 1 number, 1 special"
                 required
               />
               <button type="button" className="toggle-btn" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
             {errors.password && <p className="form-error">{errors.password}</p>}
@@ -264,7 +266,7 @@ function Signup() {
                 required
               />
               <button type="button" className="toggle-btn" onClick={() => setShowConfirm(!showConfirm)}>
-                {showConfirm ? 'Hide' : 'Show'}
+                {showConfirm ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
             {errors.confirmPassword && <p className="form-error">{errors.confirmPassword}</p>}
