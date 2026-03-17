@@ -11,71 +11,82 @@ function ResetPassword() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [recoveryReady, setRecoveryReady] = useState(false)
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    let hasHandledRecovery = false
+    let mounted = true
+    let errorTimeout = null
 
-    // Listen for auth state changes to handle password reset links
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change in reset password:', event, session)
-
-      if (event === 'PASSWORD_RECOVERY' && session && !hasHandledRecovery) {
-        // User arrived via password reset link and session is established
-        hasHandledRecovery = true
-        setError('')
-        setRecoveryReady(true)
-        console.log('Password recovery session established')
-      } else if (event === 'SIGNED_IN' && session && !hasHandledRecovery) {
-        // Check if this is a recovery session
+    const handlePasswordRecovery = async () => {
+      try {
+        // Check if we have recovery parameters in the URL
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
         const type = hashParams.get('type')
-        if (type === 'recovery') {
-          hasHandledRecovery = true
+        const accessToken = hashParams.get('access_token')
+
+        if (type !== 'recovery' || !accessToken) {
+          // Not a recovery link
+          if (mounted) {
+            setError('Invalid or expired reset link. Please request a new password reset.')
+            setChecking(false)
+          }
+          return
+        }
+
+        // We have recovery parameters - wait for Supabase to process them
+        // Set a timeout to show error if session isn't established
+        errorTimeout = setTimeout(() => {
+          if (mounted && !recoveryReady) {
+            setError('Failed to process reset link. Please request a new password reset.')
+            setChecking(false)
+          }
+        }, 5000) // Wait 5 seconds max
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('Auth event:', event, session?.user?.id)
+
+          if (!mounted) return
+
+          if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+            // Recovery session established
+            clearTimeout(errorTimeout)
+            setError('')
+            setRecoveryReady(true)
+            setChecking(false)
+            console.log('Password recovery ready')
+          }
+        })
+
+        // Also check current session immediately
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session && mounted) {
+          clearTimeout(errorTimeout)
           setError('')
           setRecoveryReady(true)
-          console.log('Recovery session signed in')
+          setChecking(false)
         }
-      } else if (!session && !hasHandledRecovery) {
-        // No session - check if we should show error
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const type = hashParams.get('type')
-        if (type === 'recovery') {
-          // Wait a bit for Supabase to process the tokens
-          setTimeout(() => {
-            if (!hasHandledRecovery) {
-              setError('Processing reset link... Please wait.')
-            }
-          }, 2000)
-        } else {
-          setError('Invalid or expired reset link. Please request a new password reset.')
+
+        return () => {
+          mounted = false
+          subscription.unsubscribe()
+          clearTimeout(errorTimeout)
         }
-      }
-    })
-
-    // Initial check - give Supabase time to process hash tokens
-    const checkInitialState = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
-
-      const { data: { session } } = await supabase.auth.getSession()
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-      const type = hashParams.get('type')
-
-      if (session && type === 'recovery') {
-        hasHandledRecovery = true
-        setError('')
-        setRecoveryReady(true)
-        console.log('Initial recovery session found')
-      } else if (type === 'recovery' && !session) {
-        // Still no session, but we have recovery tokens - Supabase might still be processing
-        setError('Processing reset link... Please wait.')
-      } else if (!type || type !== 'recovery') {
-        setError('Invalid or expired reset link. Please request a new password reset.')
+      } catch (err) {
+        console.error('Recovery check error:', err)
+        if (mounted) {
+          setError('Failed to process reset link. Please try again.')
+          setChecking(false)
+        }
       }
     }
 
-    checkInitialState()
+    handlePasswordRecovery()
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      if (errorTimeout) clearTimeout(errorTimeout)
+    }
   }, [])
 
   const handleSubmit = async (e) => {
@@ -161,12 +172,25 @@ function ResetPassword() {
           <p className="auth-subtitle">Reset Your Password</p>
         </div>
 
-        {!recoveryReady ? (
+        {checking ? (
+          // Still checking - show loading
+          <div className="auth-form">
+            <div className="auth-info">Verifying reset link...</div>
+          </div>
+        ) : !recoveryReady ? (
+          // Check complete, but no valid session
           <div className="auth-form">
             {error && <div className="auth-error">{error}</div>}
-            {!error && <div className="auth-info">Processing your reset link...</div>}
+            <button 
+              onClick={() => navigate('/login')}
+              className="auth-btn"
+              style={{ marginTop: '16px' }}
+            >
+              Back to Login
+            </button>
           </div>
         ) : (
+          // Valid session - show form
           <form className="auth-form" onSubmit={handleSubmit}>
             {error && <div className="auth-error">{error}</div>}
 
