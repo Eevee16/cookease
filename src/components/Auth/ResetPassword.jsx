@@ -10,82 +10,76 @@ function ResetPassword() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const [recoveryReady, setRecoveryReady] = useState(false)
-  const [checking, setChecking] = useState(true)
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
     let mounted = true
-    let errorTimeout = null
+    let retryCount = 0
+    const maxRetries = 10
 
-    const handlePasswordRecovery = async () => {
+    const checkRecoverySession = async () => {
       try {
-        // Check if we have recovery parameters in the URL
+        // Check if we have recovery tokens in the URL
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
         const type = hashParams.get('type')
         const accessToken = hashParams.get('access_token')
 
         if (type !== 'recovery' || !accessToken) {
-          // Not a recovery link
           if (mounted) {
-            setError('Invalid or expired reset link. Please request a new password reset.')
-            setChecking(false)
+            setError('Invalid reset link. Please request a new password reset.')
+            setIsReady(false)
           }
           return
         }
 
-        // We have recovery parameters - wait for Supabase to process them
-        // Set a timeout to show error if session isn't established
-        errorTimeout = setTimeout(() => {
-          if (mounted && !recoveryReady) {
-            setError('Failed to process reset link. Please request a new password reset.')
-            setChecking(false)
-          }
-        }, 5000) // Wait 5 seconds max
-
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth event:', event, session?.user?.id)
-
-          if (!mounted) return
-
-          if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-            // Recovery session established
-            clearTimeout(errorTimeout)
-            setError('')
-            setRecoveryReady(true)
-            setChecking(false)
-            console.log('Password recovery ready')
-          }
-        })
-
-        // Also check current session immediately
-        const { data: { session } } = await supabase.auth.getSession()
+        // We have valid tokens - try to get session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
         if (session && mounted) {
-          clearTimeout(errorTimeout)
+          // Session established successfully
+          console.log('Recovery session ready')
+          setIsReady(true)
           setError('')
-          setRecoveryReady(true)
-          setChecking(false)
+          return
         }
 
-        return () => {
-          mounted = false
-          subscription.unsubscribe()
-          clearTimeout(errorTimeout)
+        // No session yet - retry
+        if (retryCount < maxRetries && mounted) {
+          retryCount++
+          console.log(`Retry ${retryCount}/${maxRetries} - waiting for session...`)
+          setTimeout(checkRecoverySession, 500) // Retry every 500ms
+        } else if (mounted) {
+          // Max retries reached
+          setError('Failed to process reset link. Please request a new password reset.')
+          setIsReady(false)
         }
       } catch (err) {
-        console.error('Recovery check error:', err)
-        if (mounted) {
+        console.error('Session check error:', err)
+        if (mounted && retryCount < maxRetries) {
+          retryCount++
+          setTimeout(checkRecoverySession, 500)
+        } else if (mounted) {
           setError('Failed to process reset link. Please try again.')
-          setChecking(false)
+          setIsReady(false)
         }
       }
     }
 
-    handlePasswordRecovery()
+    // Start checking immediately
+    checkRecoverySession()
+
+    // Also listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event)
+      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session && mounted) {
+        setIsReady(true)
+        setError('')
+      }
+    })
 
     return () => {
       mounted = false
-      if (errorTimeout) clearTimeout(errorTimeout)
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -93,14 +87,6 @@ function ResetPassword() {
     e.preventDefault()
     setError('')
     setLoading(true)
-
-    // Check if we have a valid session first
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      setError('No valid reset session. Please request a new password reset.')
-      setLoading(false)
-      return
-    }
 
     // Validation
     if (newPassword.length < 6) {
@@ -164,6 +150,10 @@ function ResetPassword() {
     )
   }
 
+  // Check if we have recovery tokens but session not ready
+  const hashParams = new URLSearchParams(window.location.hash.substring(1))
+  const hasTokens = hashParams.get('type') === 'recovery' && hashParams.get('access_token')
+
   return (
     <div className="auth-page">
       <div className="auth-container">
@@ -172,13 +162,17 @@ function ResetPassword() {
           <p className="auth-subtitle">Reset Your Password</p>
         </div>
 
-        {checking ? (
-          // Still checking - show loading
+        {!isReady && hasTokens && !error ? (
+          // Has tokens but session not ready - show loading
           <div className="auth-form">
-            <div className="auth-info">Verifying reset link...</div>
+            <div className="auth-info" style={{ textAlign: 'center', color: '#667EAA', padding: '20px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
+              <p>Processing your reset link...</p>
+              <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '8px' }}>This may take a few seconds</p>
+            </div>
           </div>
-        ) : !recoveryReady ? (
-          // Check complete, but no valid session
+        ) : !isReady ? (
+          // No valid session and no tokens, or error occurred
           <div className="auth-form">
             {error && <div className="auth-error">{error}</div>}
             <button 
@@ -190,7 +184,7 @@ function ResetPassword() {
             </button>
           </div>
         ) : (
-          // Valid session - show form
+          // Session ready - show form
           <form className="auth-form" onSubmit={handleSubmit}>
             {error && <div className="auth-error">{error}</div>}
 
