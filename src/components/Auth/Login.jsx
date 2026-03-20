@@ -12,7 +12,8 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [banInfo, setBanInfo] = useState(null)
+  const [banPopup, setBanPopup] = useState(null)
+  const [unverifiedEmail, setUnverifiedEmail] = useState(null)
 
   const [showForgotModal, setShowForgotModal] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
@@ -38,7 +39,8 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    setBanInfo(null)
+    setBanPopup(null)
+    setUnverifiedEmail(null)
     setLoading(true)
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -56,6 +58,7 @@ function Login() {
 
       if (authError) throw authError
 
+      // ✅ STRICT EMAIL VERIFICATION CHECK
       const confirmed = !!(
         data?.user?.email_confirmed_at ||
         data?.user?.confirmed_at ||
@@ -64,7 +67,7 @@ function Login() {
 
       if (!confirmed) {
         await supabase.auth.signOut()
-        setError('Please verify your email before logging in')
+        setUnverifiedEmail(formData.email)
         setLoading(false)
         return
       }
@@ -84,14 +87,13 @@ function Login() {
         return
       }
 
-      // ✅ PERMANENT BAN - Sign out and show message
+      // ✅ PERMANENT BAN - Sign out and show popup
       if (profile.status === "banned") {
         await supabase.auth.signOut()
         
-        setBanInfo({
+        setBanPopup({
           type: "permanent",
-          reason: profile.ban_reason || "Your account has been permanently banned.",
-          message: "Your account has been permanently suspended. If you believe this is a mistake, please contact support."
+          reason: profile.ban_reason || "Policy violation"
         })
         setLoading(false)
         return
@@ -119,23 +121,16 @@ function Login() {
           return
         }
 
-        // Ban is still active - sign them out
+        // Ban is still active - sign them out and show popup
         await supabase.auth.signOut()
 
         const timeRemaining = formatTimeRemaining(now, banUntil)
         
-        setBanInfo({
+        setBanPopup({
           type: "temporary",
-          reason: profile.ban_reason || "Your account has been temporarily suspended.",
-          until: banUntil.toLocaleString("en-PH", { 
-            dateStyle: "long", 
-            timeStyle: "short" 
-          }),
-          remaining: timeRemaining,
-          message: `Your account is temporarily suspended until ${banUntil.toLocaleString("en-PH", { 
-            dateStyle: "long", 
-            timeStyle: "short" 
-          })}.`
+          reason: profile.ban_reason || "Temporary suspension",
+          until: banUntil,
+          remaining: timeRemaining
         })
         setLoading(false)
         return
@@ -187,49 +182,122 @@ function Login() {
     }
   }
 
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return
+    
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: unverifiedEmail,
+      })
+
+      if (error) throw error
+
+      alert('Verification email sent! Please check your inbox.')
+    } catch (err) {
+      console.error(err)
+      alert('Failed to send verification email. Please try again.')
+    }
+  }
+
   return (
     <div className="auth-page">
+      {/* ✅ BAN POPUP OVERLAY */}
+      {banPopup && (
+        <div className="ban-overlay" onClick={() => setBanPopup(null)}>
+          <div className="ban-popup" onClick={(e) => e.stopPropagation()}>
+            {banPopup.type === "permanent" ? (
+              <>
+                <div className="ban-icon permanent">🚫</div>
+                <h2>Account Permanently Banned</h2>
+                <p className="ban-reason">
+                  <strong>Reason:</strong> {banPopup.reason}
+                </p>
+                <p className="ban-message">
+                  Your account has been permanently suspended and you cannot access CookEase.
+                </p>
+                <p className="ban-contact">
+                  If you believe this is a mistake, please contact support at support@cookease.com
+                </p>
+                <button className="ban-close-btn" onClick={() => setBanPopup(null)}>
+                  Close
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="ban-icon temporary">⏱️</div>
+                <h2>Account Temporarily Suspended</h2>
+                <p className="ban-reason">
+                  <strong>Reason:</strong> {banPopup.reason}
+                </p>
+                <div className="ban-countdown">
+                  <span className="countdown-label">Time Remaining</span>
+                  <span className="countdown-time">{banPopup.remaining}</span>
+                </div>
+                <p className="ban-message">
+                  Your account is temporarily suspended. You cannot log in during this period.
+                </p>
+                <p className="ban-until">
+                  Your access will be restored on{" "}
+                  <strong>
+                    {banPopup.until.toLocaleString("en-PH", {
+                      dateStyle: "long",
+                      timeStyle: "short",
+                    })}
+                  </strong>
+                </p>
+                <button className="ban-close-btn" onClick={() => setBanPopup(null)}>
+                  I Understand
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ✅ EMAIL VERIFICATION POPUP */}
+      {unverifiedEmail && (
+        <div className="ban-overlay" onClick={() => setUnverifiedEmail(null)}>
+          <div className="ban-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="ban-icon" style={{ color: '#3b82f6' }}>📧</div>
+            <h2>Email Not Verified</h2>
+            <p className="ban-message">
+              You must verify your email address before logging in to CookEase.
+            </p>
+            <p className="ban-reason">
+              <strong>Email:</strong> {unverifiedEmail}
+            </p>
+            <p className="ban-contact">
+              Please check your inbox for the verification email. Don't forget to check your spam folder!
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
+              <button 
+                className="ban-close-btn" 
+                style={{ background: '#10b981', flex: 1 }}
+                onClick={handleResendVerification}
+              >
+                Resend Verification Email
+              </button>
+              <button 
+                className="ban-close-btn" 
+                style={{ background: '#6b7280', flex: 1 }}
+                onClick={() => setUnverifiedEmail(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="auth-container">
         <div className="auth-header">
           <h1 className="auth-logo" onClick={() => navigate('/')}>CookEase</h1>
           <p className="auth-subtitle">Welcome back!</p>
         </div>
 
-        {/* ✅ BAN NOTIFICATION */}
-        {banInfo && (
-          <div className={`ban-alert ${banInfo.type === "permanent" ? "ban-alert-permanent" : "ban-alert-temporary"}`}>
-            <div className="ban-alert-icon">
-              {banInfo.type === "permanent" ? "🚫" : "🕐"}
-            </div>
-            <div className="ban-alert-content">
-              <h3 className="ban-alert-title">
-                {banInfo.type === "permanent" 
-                  ? "Account Permanently Banned" 
-                  : "Account Temporarily Suspended"}
-              </h3>
-              <p className="ban-alert-message">{banInfo.message}</p>
-              {banInfo.type === "temporary" && (
-                <div className="ban-alert-details">
-                  <p><strong>Time Remaining:</strong> {banInfo.remaining}</p>
-                  <p><strong>Access Restored:</strong> {banInfo.until}</p>
-                </div>
-              )}
-              {banInfo.reason && (
-                <div className="ban-alert-reason">
-                  <strong>Reason:</strong> {banInfo.reason}
-                </div>
-              )}
-              {banInfo.type === "permanent" && (
-                <p className="ban-alert-support">
-                  If you believe this is a mistake, please contact support at support@cookease.com
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
         <form className="auth-form" onSubmit={handleSubmit}>
-          {error && !banInfo && <div className="auth-error">{error}</div>}
+          {error && <div className="auth-error">{error}</div>}
 
           <div className="form-group">
             <label htmlFor="email">Email</label>

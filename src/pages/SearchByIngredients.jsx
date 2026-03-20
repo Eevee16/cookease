@@ -21,6 +21,10 @@ function SearchByIngredients() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [modalError, setModalError] = useState('');
+  
+  // Delete ingredient state
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // stores ingredient to delete
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { fetchIngredients(); }, []);
 
@@ -121,6 +125,33 @@ function SearchByIngredients() {
     } finally { setSaving(false); }
   };
 
+  // ✅ Delete ingredient handler
+  const handleDeleteIngredient = async (ingredient) => {
+    setDeleting(true);
+    try {
+      // Delete from database
+      const { error } = await supabase
+        .from('ingredients')
+        .delete()
+        .eq('id', ingredient.id);
+      
+      if (error) throw error;
+
+      // Remove from local state
+      setAllIngredients(prev => prev.filter(ing => ing.id !== ingredient.id));
+      
+      // Remove from selected if it was selected
+      setSelectedIngredients(prev => prev.filter(name => name !== ingredient.name));
+      
+      // Close confirmation modal
+      setDeleteConfirm(null);
+    } catch (err) {
+      alert('Failed to delete ingredient: ' + err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const closePanel = () => {
     setShowAddPanel(false);
     setNewName(''); setImageFile(null);
@@ -140,6 +171,34 @@ function SearchByIngredients() {
 
   return (
     <div className="search-ingredients-page">
+      {/* ✅ Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="delete-modal-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="delete-modal-icon">🗑️</div>
+            <h3>Delete Ingredient?</h3>
+            <p>Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</p>
+            <p className="delete-warning">This action cannot be undone.</p>
+            <div className="delete-modal-actions">
+              <button 
+                className="delete-modal-cancel" 
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="delete-modal-confirm" 
+                onClick={() => handleDeleteIngredient(deleteConfirm)}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="search-main">
         <div className="search-title-section">
           <h1 className="page-title">Search by Ingredients</h1>
@@ -223,6 +282,19 @@ function SearchByIngredients() {
                       className="ingredient-card selected"
                       onClick={() => toggleIngredient(ing.name)}
                     >
+                      {/* ✅ Delete button for moderators */}
+                      {isModerator && (
+                        <button 
+                          className="ingredient-delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm(ing);
+                          }}
+                          title="Delete ingredient"
+                        >
+                          ✕
+                        </button>
+                      )}
                       <div className="ingredient-image">
                         <img
                           src={ing.image_url || '/ingredients/default.jpg'}
@@ -253,6 +325,19 @@ function SearchByIngredients() {
                     className="ingredient-card"
                     onClick={() => toggleIngredient(ing.name)}
                   >
+                    {/* ✅ Delete button for moderators */}
+                    {isModerator && (
+                      <button 
+                        className="ingredient-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirm(ing);
+                        }}
+                        title="Delete ingredient"
+                      >
+                        ✕
+                      </button>
+                    )}
                     <div className="ingredient-image">
                       <img
                         src={ing.image_url || '/ingredients/default.jpg'}

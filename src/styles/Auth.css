@@ -18,145 +18,136 @@
     max-width: 450px;
 }
 
-/* Ban Alert Container */
-.ban-alert {
+/* ================================
+   Ban Popup Overlay Styles
+================================ */
+.ban-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
-  gap: 16px;
-  padding: 20px;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+}
+
+.ban-popup {
+  background: white;
+  padding: 3rem;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.4s ease;
+}
+
+.ban-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: bounce 0.6s ease;
+}
+
+.ban-icon.permanent {
+  color: #ef4444;
+}
+
+.ban-icon.temporary {
+  color: #f59e0b;
+}
+
+.ban-popup h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #1f2937;
+}
+
+.ban-reason {
+  background: #f3f4f6;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.ban-reason strong {
+  color: #111827;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.ban-countdown {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  padding: 1.5rem;
   border-radius: 12px;
-  margin-bottom: 24px;
-  border: 2px solid;
-  animation: slideDown 0.3s ease-out;
+  margin: 1.5rem 0;
 }
- 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
- 
-/* Permanent Ban Alert */
-.ban-alert-permanent {
-  background: #fee2e2;
-  border-color: #ef4444;
-}
- 
-/* Temporary Ban Alert */
-.ban-alert-temporary {
-  background: #fef3c7;
-  border-color: #f59e0b;
-}
- 
-/* Ban Alert Icon */
-.ban-alert-icon {
-  font-size: 32px;
-  flex-shrink: 0;
-  line-height: 1;
-}
- 
-/* Ban Alert Content */
-.ban-alert-content {
-  flex: 1;
-}
- 
-.ban-alert-title {
-  font-size: 18px;
-  font-weight: 800;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
- 
-.ban-alert-message {
-  font-size: 14px;
-  color: #374151;
-  margin: 0 0 12px 0;
-  line-height: 1.6;
-}
- 
-/* Ban Alert Details (for temporary bans) */
-.ban-alert-details {
-  background: rgba(255, 255, 255, 0.5);
-  padding: 12px;
-  border-radius: 8px;
-  margin: 12px 0;
-}
- 
-.ban-alert-details p {
-  font-size: 13px;
-  color: #374151;
-  margin: 0 0 6px 0;
+
+.countdown-label {
+  display: block;
+  font-size: 0.85rem;
   font-weight: 600;
+  color: #92400e;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
- 
-.ban-alert-details p:last-child {
-  margin-bottom: 0;
-}
- 
-.ban-alert-details strong {
-  color: #1f2937;
+
+.countdown-time {
+  display: block;
+  font-size: 2rem;
   font-weight: 700;
+  color: #b45309;
+  font-family: 'Courier New', monospace;
 }
- 
-/* Ban Alert Reason */
-.ban-alert-reason {
-  background: rgba(0, 0, 0, 0.05);
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #374151;
-  margin: 12px 0;
-}
- 
-.ban-alert-reason strong {
-  color: #1f2937;
-  font-weight: 700;
-}
- 
-/* Ban Alert Support Message */
-.ban-alert-support {
-  font-size: 13px;
+
+.ban-message {
   color: #6b7280;
-  margin: 12px 0 0 0;
+  line-height: 1.6;
+  margin: 1rem 0;
+}
+
+.ban-until {
+  color: #4b5563;
+  font-size: 0.9rem;
+  margin: 1rem 0;
+}
+
+.ban-until strong {
+  color: #1f2937;
+}
+
+.ban-contact {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-top: 1.5rem;
   font-style: italic;
 }
- 
-/* Responsive - Mobile */
-@media (max-width: 767px) {
-  .ban-alert {
-    flex-direction: column;
-    padding: 16px;
-    gap: 12px;
-  }
- 
-  .ban-alert-icon {
-    font-size: 28px;
-    text-align: center;
-  }
- 
-  .ban-alert-title {
-    font-size: 16px;
-    text-align: center;
-  }
- 
-  .ban-alert-message {
-    font-size: 13px;
-    text-align: center;
-  }
- 
-  .ban-alert-details,
-  .ban-alert-reason {
-    font-size: 12px;
-  }
- 
-  .ban-alert-support {
-    font-size: 12px;
-    text-align: center;
-  }
+
+.ban-close-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1.5rem;
+  transition: all 0.2s;
+}
+
+.ban-close-btn:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 /* ================================
@@ -514,42 +505,42 @@
 }
 
 .password-strength {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .strength-bar {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: #e5e7eb;
-  transition: all 0.3s;
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: #e5e7eb;
+    transition: all 0.3s;
 }
 
 .strength-bar.strength-1,
 .strength-bar.strength-2 {
-  background: #ef4444;
-  width: 33%;
+    background: #ef4444;
+    width: 33%;
 }
 
 .strength-bar.strength-3,
 .strength-bar.strength-4 {
-  background: #f59e0b;
-  width: 66%;
+    background: #f59e0b;
+    width: 66%;
 }
 
 .strength-bar.strength-5,
 .strength-bar.strength-6 {
-  background: #10b981;
-  width: 100%;
+    background: #10b981;
+    width: 100%;
 }
 
 .password-strength span {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 500;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
 }
 
 
@@ -564,6 +555,15 @@
 @keyframes slideUp {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 /* ================================
@@ -581,4 +581,23 @@
     .toggle-btn {
         width: 32px;
     }
+}
+
+/* Mobile responsive for ban popup */
+@media (max-width: 640px) {
+  .ban-popup {
+    padding: 2rem 1.5rem;
+  }
+
+  .ban-icon {
+    font-size: 3rem;
+  }
+
+  .ban-popup h2 {
+    font-size: 1.5rem;
+  }
+
+  .countdown-time {
+    font-size: 1.5rem;
+  }
 }

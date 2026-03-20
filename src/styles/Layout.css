@@ -105,11 +105,30 @@
   padding: 8px 12px;
   border-radius: 6px;
   transition: all 0.2s;
+  position: relative;
 }
 
 .nav-link:hover {
   background: #fff7ed;
   color: #f97316;
+}
+
+/* Active state for nav links */
+.nav-link.active {
+  background: #ffedd5;
+  color: #f97316;
+  font-weight: 600;
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background: #f97316;
+  border-radius: 2px 2px 0 0;
 }
 
 /* Dropdown */
@@ -127,11 +146,30 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
 }
 
 .dropdown-btn:hover {
   background: #fff7ed;
   color: #f97316;
+}
+
+/* Active state for dropdown button */
+.dropdown-btn.active {
+  background: #ffedd5;
+  color: #f97316;
+  font-weight: 600;
+}
+
+.dropdown-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background: #f97316;
+  border-radius: 2px 2px 0 0;
 }
 
 .dropdown-content {
@@ -182,6 +220,15 @@
 .dropdown-content a:hover {
   background: #fff7ed;
   color: #f97316;
+}
+
+/* Active state for dropdown items */
+.dropdown-content a.active {
+  background: #ffedd5;
+  color: #f97316;
+  font-weight: 600;
+  border-left: 3px solid #f97316;
+  padding-left: 13px;
 }
 
 /* Action Links */
@@ -241,6 +288,13 @@
   color: white !important;
 }
 
+/* Active state for Add Recipe link */
+.add-recipe-link.active {
+  background: linear-gradient(135deg, #5568d3 0%, #6a3e94 100%) !important;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6), 0 0 0 3px rgba(102, 126, 234, 0.2);
+  transform: scale(1.05);
+}
+
 .admin-link {
   color: #f97316;
   text-decoration: none;
@@ -263,10 +317,28 @@
   padding: 8px 12px;
   border-radius: 6px;
   transition: all 0.2s;
+  position: relative;
 }
 
 .moderator-link:hover {
   background: #f5f3ff;
+}
+
+/* Active state for moderator link */
+.moderator-link.active {
+  background: #ede9fe;
+  font-weight: 700;
+}
+
+.moderator-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background: #8b5cf6;
+  border-radius: 2px 2px 0 0;
 }
 
 /* User Menu */
@@ -327,6 +399,15 @@
   color: #f97316;
 }
 
+/* Active state for user dropdown items */
+.user-dropdown a.active {
+  background: #ffedd5;
+  color: #f97316;
+  font-weight: 600;
+  border-left: 3px solid #f97316;
+  padding-left: 13px;
+}
+
 /* Login/Signup Links */
 .login-link,
 .signup-link {
@@ -337,10 +418,17 @@
   padding: 8px 16px;
   border-radius: 8px;
   transition: all 0.2s;
+  position: relative;
 }
 
 .login-link:hover {
   background: #f3f4f6;
+}
+
+/* Active state for login link */
+.login-link.active {
+  background: #e5e7eb;
+  font-weight: 600;
 }
 
 .signup-link {
@@ -353,6 +441,13 @@
   background: #526a91;
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(102, 126, 170, 0.3);
+}
+
+/* Active state for signup link */
+.signup-link.active {
+  background: #526a91;
+  box-shadow: 0 4px 12px rgba(102, 126, 170, 0.4), 0 0 0 3px rgba(102, 126, 170, 0.2);
+  transform: scale(1.05);
 }
 
 /* Main Content */
@@ -401,6 +496,22 @@
   color: #f97316;
 }
 
+.user-dropdown-divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 4px 0;
+}
+
+.user-dropdown-section-label {
+  display: block;
+  padding: 6px 16px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #9ca3af;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .search-bar {
@@ -441,21 +552,4 @@
     flex-direction: column;
     text-align: center;
   }
-  .user-dropdown-divider {
-  height: 1px;
-  background: #f3f4f6;
-  margin: 4px 0;
-  }
-
-  .user-dropdown-section-label {
-  display: block;
-  padding: 6px 16px 4px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: #9ca3af;
-  }
-
-  
 }

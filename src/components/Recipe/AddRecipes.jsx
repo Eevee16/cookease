@@ -28,10 +28,40 @@ function AddRecipe() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading, fullName } = useRoles();
+  const [approvalStatus, setApprovalStatus] = useState(null);
+  const [checkingApproval, setCheckingApproval] = useState(true);
 
+  // ✅ Check if user is logged in
   useEffect(() => {
     if (!loading && !user) navigate("/login", { state: { from: location } });
   }, [user, loading, navigate, location]);
+
+  // ✅ Check admin approval status
+  useEffect(() => {
+    const checkApprovalStatus = async () => {
+      if (!user) return;
+      
+      setCheckingApproval(true);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("approval_status")
+          .eq("id", user.id)
+          .single();
+
+        if (error) throw error;
+        
+        setApprovalStatus(data?.approval_status || "pending");
+      } catch (err) {
+        console.error("Error checking approval status:", err);
+        setApprovalStatus("pending"); // Default to pending if error
+      } finally {
+        setCheckingApproval(false);
+      }
+    };
+
+    checkApprovalStatus();
+  }, [user]);
 
   const categoryOptions = ["Breakfast","Lunch","Dinner","Dessert","Snacks","Appetizer","Soup","Salad","Beverage","Side Dish"];
   const cuisineOptions = ["Filipino","Chinese","Japanese","Korean","Thai","Vietnamese","Indian","Italian","French","American","Mexican","Spanish","Greek","Middle Eastern","African","Fusion"];
@@ -172,13 +202,55 @@ function AddRecipe() {
     });
   };
 
-  if (loading) return (
+  // ✅ Show loading while checking approval
+  if (loading || checkingApproval) return (
     <div className="add-recipe-page">
       <div className="add-recipe-main">
         <div className="loading-spinner"><div className="spinner"></div><p>Loading...</p></div>
       </div>
     </div>
   );
+
+  // ✅ Show approval required message
+  if (approvalStatus !== "approved") {
+    return (
+      <div className="add-recipe-page">
+        <div className="ban-overlay" onClick={() => navigate("/")}>
+          <div className="ban-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="ban-icon" style={{ color: '#f59e0b' }}>
+              {approvalStatus === "rejected" ? "🚫" : "⏳"}
+            </div>
+            <h2>
+              {approvalStatus === "rejected" 
+                ? "Account Not Approved" 
+                : "Approval Pending"}
+            </h2>
+            <p className="ban-message">
+              {approvalStatus === "rejected"
+                ? "Your account registration was not approved. You cannot submit recipes."
+                : "Your account is pending admin approval. You'll be able to submit recipes once an administrator reviews and approves your account."}
+            </p>
+            <p className="ban-reason">
+              <strong>Current Status:</strong> {approvalStatus || "pending"}
+            </p>
+            {approvalStatus === "pending" && (
+              <p className="ban-contact">
+                This usually takes 24-48 hours. You'll receive a notification once approved.
+              </p>
+            )}
+            {approvalStatus === "rejected" && (
+              <p className="ban-contact">
+                If you believe this is a mistake, please contact support at support@cookease.com
+              </p>
+            )}
+            <button className="ban-close-btn" onClick={() => navigate("/")}>
+              Go Back Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -397,16 +469,24 @@ function AddRecipe() {
           <form className="recipe-form" onSubmit={handleSubmit}>
             {/* Recipe Image */}
             <div className="form-section">
-              <h2>Recipe Image</h2>
+              <div className="section-header-with-action">
+                <h2>Recipe Image</h2>
+                {imagePreview && (
+                  <button 
+                    type="button" 
+                    className="remove-header-btn" 
+                    onClick={(e) => { e.preventDefault(); setImageFile(null); setImagePreview(""); setImageMeta(null); }}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
               <div className="image-upload">
                 <input type="file" accept="image/*" onChange={handleImageChange} id="recipe-image" style={{ display: "none" }} />
                 <label htmlFor="recipe-image" className="image-upload-label">
                   {imagePreview ? (
                     <div className="image-preview-wrapper">
                       <img src={imagePreview} alt="Preview" className="image-preview" />
-                      <button type="button" className="remove-image-btn" onClick={(e) => { e.preventDefault(); setImageFile(null); setImagePreview(""); setImageMeta(null); }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
                     </div>
                   ) : (
                     <div className="upload-placeholder">
