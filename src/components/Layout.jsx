@@ -185,7 +185,7 @@ function Layout({ children }) {
 
       <header className="header">
         <div className="header-content">
-          <button className="menu-btn">☰</button>
+          
           <h1 className="logo" onClick={() => navigate(user ? "/home" : "/")} style={{ cursor: "pointer" }}>CookEase</h1>
 
           <form className="search-bar" onSubmit={handleSearch}>
