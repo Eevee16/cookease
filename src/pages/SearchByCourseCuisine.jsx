@@ -1,392 +1,243 @@
 import { useState, useEffect } from 'react';
-import RecipeCard from '../components/RecipeCard';
 import { supabase } from '../supabaseClient';
-import { useRoles } from '../contexts/RoleContext';
-import '../styles/SearchByIngredients.css';
+import RecipeCard from '../components/RecipeCard';
+import "../styles/SearchByCourseCuisine.css";
 
-function SearchByIngredients() {
-  const { isModerator } = useRoles();
+function SearchByCourseCuisine() {
   const [recipes, setRecipes] = useState([]);
-  const [filteredRecipes, setFilteredRecipes] = useState([]);
-  const [loadingRecipes, setLoadingRecipes] = useState(true);
-  const [selectedIngredients, setSelectedIngredients] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [allIngredients, setAllIngredients] = useState([]);
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [cuisineFilter, setCuisineFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [cuisines, setCuisines] = useState([]);
 
-  // Moderator add panel
-  const [showAddPanel, setShowAddPanel] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [modalError, setModalError] = useState('');
-  
-  // Delete ingredient state
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // stores ingredient to delete
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => { fetchIngredients(); }, []);
-
-  const fetchIngredients = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('ingredients')
-        .select('id, name, image_url')
-        .order('name', { ascending: true });
-      if (!error) setAllIngredients(data || []);
-    } catch (err) { console.error('Error fetching ingredients:', err); }
-  };
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showCuisineDropdown, setShowCuisineDropdown] = useState(false);
 
   useEffect(() => {
     const fetchRecipes = async () => {
+      setLoading(true);
       try {
+        // Only fetch approved recipes
         const { data, error } = await supabase
-          .from('recipes').select('*').in('status', ['approved', 'done']);
-        if (error) throw error;
-        setRecipes(data || []);
-        setFilteredRecipes(data || []);
-      } catch (err) { console.error('Error fetching recipes:', err); }
-      finally { setLoadingRecipes(false); }
+          .from('recipes')
+          .select('*')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching recipes:', error);
+          setRecipes([]);
+          setCategories([]);
+          setCuisines([]);
+          return;
+        }
+
+        const recipeData = data || [];
+
+        // Fetch profile data for owners to show avatars + proper names
+        const ownerIds = [...new Set(recipeData.map(r => r.owner_id).filter(Boolean))];
+        let ownerMap = {};
+        if (ownerIds.length) {
+          const { data: profiles, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, name, email, photo_url')
+            .in('id', ownerIds);
+
+          if (profileError) {
+            console.warn('Failed to load profile data for recipes:', profileError);
+          } else {
+            ownerMap = (profiles || []).reduce((acc, p) => {
+              const firstLast = [p.first_name, p.last_name].filter(Boolean).join(' ');
+              const displayName = firstLast || p.name || p.email || 'Unknown';
+              acc[p.id] = {
+                displayName,
+                photoUrl: p.photo_url || null
+              };
+              return acc;
+            }, {});
+          }
+        }
+
+        const normalizedRecipes = recipeData.map(r => {
+          const owner = ownerMap[r.owner_id];
+          return {
+            ...r,
+            owner_name: owner?.displayName || r.owner_name || 'Unknown',
+            owner_photo: owner?.photoUrl || null
+          };
+        });
+
+        setRecipes(normalizedRecipes);
+
+        // Extract unique categories and cuisines dynamically
+        const uniqueCategories = [...new Set(normalizedRecipes.map(r => r.category).filter(Boolean))];
+        const uniqueCuisines = [...new Set(normalizedRecipes.map(r => r.cuisine).filter(Boolean))];
+
+        setCategories(uniqueCategories.sort());
+        setCuisines(uniqueCuisines.sort());
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        setRecipes([]);
+        setCategories([]);
+        setCuisines([]);
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchRecipes();
   }, []);
 
+  // Filtered recipes by category and cuisine
+  const filteredRecipes = recipes.filter(recipe => {
+    const categoryMatch = categoryFilter ? recipe.category === categoryFilter : true;
+    const cuisineMatch = cuisineFilter ? recipe.cuisine === cuisineFilter : true;
+    return categoryMatch && cuisineMatch;
+  });
+
+  // Clear all filters
+  const clearFilters = () => {
+    setCategoryFilter('');
+    setCuisineFilter('');
+    setShowCategoryDropdown(false);
+    setShowCuisineDropdown(false);
+  };
+
+  // Close dropdowns when user clicks outside
   useEffect(() => {
-    if (selectedIngredients.length === 0) { setFilteredRecipes(recipes); return; }
-    const filtered = recipes.filter(recipe => {
-      let list = recipe.ingredients;
-      if (typeof list === 'string') {
-        try { list = JSON.parse(list); }
-        catch (e) { list = list.split(/\n|,/).map(i => i.trim()).filter(Boolean); }
+    const handler = (e) => {
+      const path = e.composedPath?.() || (e.path || []);
+      const isOutside = !path.some(el => el?.classList?.contains?.('custom-dropdown'));
+      if (isOutside) {
+        setShowCategoryDropdown(false);
+        setShowCuisineDropdown(false);
       }
-      if (!Array.isArray(list)) return false;
-      return selectedIngredients.every(sel =>
-        list.some(ing => ing.toLowerCase().includes(sel.toLowerCase()))
-      );
-    });
-    setFilteredRecipes(filtered);
-  }, [selectedIngredients, recipes]);
+    };
 
-  const toggleIngredient = (name) => {
-    setSelectedIngredients(prev =>
-      prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
-    );
-  };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, []);
 
-  const clearAll = () => { setSelectedIngredients([]); setSearchTerm(''); };
-
-  const selectedIngredientObjects = allIngredients.filter(ing =>
-    selectedIngredients.includes(ing.name)
-  );
-
-  const unselectedIngredients = allIngredients.filter(ing =>
-    !selectedIngredients.includes(ing.name) &&
-    ing.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Add ingredient handlers
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-    setModalError('');
-  };
-
-  const handleAddIngredient = async () => {
-    setModalError('');
-    if (!newName.trim()) { setModalError('Name is required.'); return; }
-    setSaving(true);
-    try {
-      let image_url = '';
-      if (imageFile) {
-        const ext = imageFile.name.split('.').pop();
-        const fileName = `${newName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from('ingredients').upload(fileName, imageFile, { cacheControl: '3600', upsert: true });
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from('ingredients').getPublicUrl(fileName);
-        image_url = urlData.publicUrl;
-      }
-      const { data, error } = await supabase
-        .from('ingredients')
-        .insert([{ name: newName.trim(), image_url }])
-        .select().single();
-      if (error) throw error;
-      setAllIngredients(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
-      setNewName('');
-      setImageFile(null);
-      setImagePreview('');
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2500);
-    } catch (err) {
-      setModalError('Failed: ' + err.message);
-    } finally { setSaving(false); }
-  };
-
-  // ✅ Delete ingredient handler
-  const handleDeleteIngredient = async (ingredient) => {
-    setDeleting(true);
-    try {
-      // Delete from database
-      const { error } = await supabase
-        .from('ingredients')
-        .delete()
-        .eq('id', ingredient.id);
-      
-      if (error) throw error;
-
-      // Remove from local state
-      setAllIngredients(prev => prev.filter(ing => ing.id !== ingredient.id));
-      
-      // Remove from selected if it was selected
-      setSelectedIngredients(prev => prev.filter(name => name !== ingredient.name));
-      
-      // Close confirmation modal
-      setDeleteConfirm(null);
-    } catch (err) {
-      alert('Failed to delete ingredient: ' + err.message);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const closePanel = () => {
-    setShowAddPanel(false);
-    setNewName(''); setImageFile(null);
-    setImagePreview(''); setModalError(''); setSaveSuccess(false);
-  };
-
-  if (loadingRecipes) {
+  if (loading) {
     return (
-      <div className="search-ingredients-page">
+      <div className="search-course-cuisine-page">
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Loading...</p>
+          <p>Loading recipes...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="search-ingredients-page">
-      {/* ✅ Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="delete-modal-overlay" onClick={() => setDeleteConfirm(null)}>
-          <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="delete-modal-icon">🗑️</div>
-            <h3>Delete Ingredient?</h3>
-            <p>Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</p>
-            <p className="delete-warning">This action cannot be undone.</p>
-            <div className="delete-modal-actions">
-              <button 
-                className="delete-modal-cancel" 
-                onClick={() => setDeleteConfirm(null)}
-                disabled={deleting}
+    <div className="search-course-cuisine-page">
+      <div className="search-header">
+        <h1>Search Recipes</h1>
+        <p className="search-subtitle">Find recipes by category and cuisine</p>
+      </div>
+
+      <div className="filters-container">
+        <div className="filters">
+          <div className="filter-group">
+            <label>Category</label>
+            <div
+              className={`custom-dropdown ${showCategoryDropdown ? 'open' : ''}`}
+              onMouseEnter={() => setShowCategoryDropdown(true)}
+              onMouseLeave={() => setShowCategoryDropdown(false)}
+            >
+              <button
+                type="button"
+                className="custom-dropdown-btn"
+                onClick={() => setShowCategoryDropdown(prev => !prev)}
               >
-                Cancel
+                {categoryFilter || 'All Categories'}
+                <span className="dropdown-caret">▾</span>
               </button>
-              <button 
-                className="delete-modal-confirm" 
-                onClick={() => handleDeleteIngredient(deleteConfirm)}
-                disabled={deleting}
-              >
-                {deleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <main className="search-main">
-        <div className="search-title-section">
-          <h1 className="page-title">Search by Ingredients</h1>
-          <p className="page-subtitle">Select the ingredients you have and we'll find matching recipes!</p>
-        </div>
-
-        <div className="search-content">
-          {/* Left — Ingredient Selector */}
-          <div className="ingredient-selector">
-            <div className="selector-header">
-              <h2>Ingredients</h2>
-              <div className="selector-header-right">
-                {selectedIngredients.length > 0 && (
-                  <button className="clear-btn" onClick={clearAll}>Clear ({selectedIngredients.length})</button>
-                )}
-                {isModerator && (
-                  <button className="mod-add-btn" onClick={() => setShowAddPanel(v => !v)} title="Add Ingredient">
-                    ➕ Add
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* ✅ Moderator compact add panel */}
-            {showAddPanel && (
-              <div className="add-ingredient-panel">
-                <div className="add-panel-header">
-                  <span>Add New Ingredient</span>
-                  <button className="panel-close" onClick={closePanel}>✕</button>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Ingredient name *"
-                  value={newName}
-                  onChange={(e) => { setNewName(e.target.value); setModalError(''); }}
-                  className="panel-input"
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  id="panel-img-upload"
-                  style={{ display: 'none' }}
-                />
-                <label htmlFor="panel-img-upload" className="panel-img-label">
-                  {imagePreview
-                    ? <img src={imagePreview} alt="preview" className="panel-img-preview" />
-                    : <div className="panel-img-placeholder"><span>📷</span><p>Click to upload image</p></div>
-                  }
-                </label>
-                {modalError && <p className="panel-error">⚠ {modalError}</p>}
-                {saveSuccess && <p className="panel-success">✓ Ingredient added!</p>}
+              <div className={`custom-dropdown-content ${showCategoryDropdown ? 'show' : ''}`}>
                 <button
-                  className="panel-save-btn"
-                  onClick={handleAddIngredient}
-                  disabled={saving}
+                  type="button"
+                  className="custom-dropdown-item"
+                  onClick={() => { setCategoryFilter(''); setShowCategoryDropdown(false); }}
                 >
-                  {saving ? 'Adding...' : 'Add Ingredient'}
+                  All Categories
                 </button>
-              </div>
-            )}
-
-            <div className="search-box">
-              <input
-                type="text"
-                placeholder="Search ingredients..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="ingredient-search"
-              />
-            </div>
-
-            {/* ✅ Isolated selected section */}
-            {selectedIngredientObjects.length > 0 && (
-              <div className="selected-section">
-                <p className="selected-section-label">Selected</p>
-                <div className="ingredients-grid">
-                  {selectedIngredientObjects.map(ing => (
-                    <div
-                      key={ing.id}
-                      className="ingredient-card selected"
-                      onClick={() => toggleIngredient(ing.name)}
-                    >
-                      {/* ✅ Delete button for moderators */}
-                      {isModerator && (
-                        <button 
-                          className="ingredient-delete-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm(ing);
-                          }}
-                          title="Delete ingredient"
-                        >
-                          ✕
-                        </button>
-                      )}
-                      <div className="ingredient-image">
-                        <img
-                          src={ing.image_url || '/ingredients/default.jpg'}
-                          alt={ing.name}
-                          loading="lazy"
-                          onError={(e) => { e.currentTarget.src = '/ingredients/default.jpg'; }}
-                        />
-                        <div className="selected-overlay">
-                          <span className="check-icon">✓</span>
-                        </div>
-                      </div>
-                      <div className="ingredient-name"><span>{ing.name}</span></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Unselected ingredients */}
-            {selectedIngredientObjects.length > 0 && (
-              <p className="available-label">Available</p>
-            )}
-            <div className="ingredients-grid scrollable">
-              {unselectedIngredients.length > 0 ? (
-                unselectedIngredients.map(ing => (
-                  <div
-                    key={ing.id}
-                    className="ingredient-card"
-                    onClick={() => toggleIngredient(ing.name)}
+                {categories.map(category => (
+                  <button
+                    key={category}
+                    type="button"
+                    className={`custom-dropdown-item ${categoryFilter === category ? 'active' : ''}`}
+                    onClick={() => { setCategoryFilter(category); setShowCategoryDropdown(false); }}
                   >
-                    {/* ✅ Delete button for moderators */}
-                    {isModerator && (
-                      <button 
-                        className="ingredient-delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirm(ing);
-                        }}
-                        title="Delete ingredient"
-                      >
-                        ✕
-                      </button>
-                    )}
-                    <div className="ingredient-image">
-                      <img
-                        src={ing.image_url || '/ingredients/default.jpg'}
-                        alt={ing.name}
-                        loading="lazy"
-                        onError={(e) => { e.currentTarget.src = '/ingredients/default.jpg'; }}
-                      />
-                    </div>
-                    <div className="ingredient-name"><span>{ing.name}</span></div>
-                  </div>
-                ))
-              ) : (
-                searchTerm && <p className="no-results">No ingredients found for "{searchTerm}"</p>
-              )}
-            </div>
-          </div>
-
-          {/* Right — Recipe Results */}
-          <div className="recipe-results">
-            <div className="results-header">
-              <h2>Recipes</h2>
-              <span className="results-count">{filteredRecipes.length} found</span>
-            </div>
-
-            {selectedIngredients.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">🥘</div>
-                <h3>Select ingredients to get started</h3>
-                <p>Choose from the ingredients on the left to find recipes you can make.</p>
-              </div>
-            ) : filteredRecipes.length > 0 ? (
-              <div className="recipe-grid">
-                {filteredRecipes.map(recipe => (
-                  <RecipeCard key={recipe.id} recipe={recipe} />
+                    {category}
+                  </button>
                 ))}
               </div>
-            ) : (
-              <div className="empty-state">
-                <div className="empty-icon">😕</div>
-                <h3>No recipes found</h3>
-                <p>Try selecting different or fewer ingredients.</p>
-                <button className="clear-btn-alt" onClick={clearAll}>Clear Selection</button>
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <label>Cuisine</label>
+            <div
+              className={`custom-dropdown ${showCuisineDropdown ? 'open' : ''}`}
+              onMouseEnter={() => setShowCuisineDropdown(true)}
+              onMouseLeave={() => setShowCuisineDropdown(false)}
+            >
+              <button
+                type="button"
+                className="custom-dropdown-btn"
+                onClick={() => setShowCuisineDropdown(prev => !prev)}
+              >
+                {cuisineFilter || 'All Cuisines'}
+                <span className="dropdown-caret">▾</span>
+              </button>
+              <div className={`custom-dropdown-content ${showCuisineDropdown ? 'show' : ''}`}>
+                <button
+                  type="button"
+                  className="custom-dropdown-item"
+                  onClick={() => { setCuisineFilter(''); setShowCuisineDropdown(false); }}
+                >
+                  All Cuisines
+                </button>
+                {cuisines.map(cuisine => (
+                  <button
+                    key={cuisine}
+                    type="button"
+                    className={`custom-dropdown-item ${cuisineFilter === cuisine ? 'active' : ''}`}
+                    onClick={() => { setCuisineFilter(cuisine); setShowCuisineDropdown(false); }}
+                  >
+                    {cuisine}
+                  </button>
+                ))}
               </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div className="results-count">
+          {filteredRecipes.length} {filteredRecipes.length === 1 ? 'recipe' : 'recipes'} found
+        </div>
+      </div>
+
+      <div className="recipe-grid">
+        {filteredRecipes.length === 0 ? (
+          <div className="no-results">
+            <p className="no-results-message">No recipes match your filters.</p>
+            {(categoryFilter || cuisineFilter) && (
+              <button onClick={clearFilters} className="clear-btn">
+                Clear Filters
+              </button>
             )}
           </div>
-        </div>
-      </main>
+        ) : (
+          filteredRecipes.map(recipe => (
+            <RecipeCard key={recipe.id} recipe={recipe} />
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
-export default SearchByIngredients;
+export default SearchByCourseCuisine;
