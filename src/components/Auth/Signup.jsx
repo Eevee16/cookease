@@ -19,12 +19,10 @@ function Signup() {
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  // Handle text input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle image selection and preview
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -33,7 +31,6 @@ function Signup() {
     }
   };
 
-  // Password strength calculator
   const calculatePasswordStrength = (password) => {
     let score = 0;
     if (password.length >= 6) score++;
@@ -51,7 +48,6 @@ function Signup() {
     return 'Strong';
   };
 
-  // Form validation
   useEffect(() => {
     const newErrors = {};
 
@@ -88,7 +84,39 @@ function Signup() {
     setErrors(newErrors);
   }, [formData]);
 
-  // Handle signup
+  const uploadAvatar = async (userId, avatarFile) => {
+    const fileExt = avatarFile.name.split('.').pop();
+
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-avatar-upload-url`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ userId, fileExt }),
+      }
+    );
+
+    const { signedUrl, path, error: urlError } = await res.json();
+    if (urlError) throw new Error(urlError);
+
+    const uploadRes = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': avatarFile.type },
+      body: avatarFile,
+    });
+
+    if (!uploadRes.ok) throw new Error('Avatar upload failed');
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(path);
+
+    return publicUrl;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -99,8 +127,7 @@ function Signup() {
     }
 
     try {
-      // Step 1: Sign up user with metadata
-      // The trigger will automatically create the profile using this data
+      // Step 1: Sign up user
       const { data: userData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -108,52 +135,47 @@ function Signup() {
           emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/login`,
           data: {
             first_name: formData.firstName,
-            last_name: formData.lastName
-          }
-        }
+            last_name: formData.lastName,
+          },
+        },
       });
 
       if (signUpError) throw signUpError;
-
-      if (!userData.user) {
-        throw new Error('Signup failed - no user returned');
-      }
+      if (!userData.user) throw new Error('Signup failed - no user returned');
 
       const userId = userData.user.id;
 
-      // Step 2: Upload profile image AFTER user is created (now authenticated)
+      // Step 2: Upload avatar if provided, then save profile row
+      let photoUrl = null;
       if (profileImage) {
-        const fileExt = profileImage.name.split('.').pop();
-        const fileName = `avatar.${fileExt}`;
-        const filePath = `${userId}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, profileImage, { 
-            cacheControl: '3600', 
-            upsert: true 
-          });
-
-        if (uploadError) {
-          console.error('Avatar upload error:', uploadError);
-          // Don't throw - continue even if avatar upload fails
-        } else {
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-          
-          // Update the profile with the photo URL
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ photo_url: urlData.publicUrl })
-            .eq('id', userId);
-
-          if (updateError) {
-            console.error('Photo URL update error:', updateError);
-            // Don't throw - profile exists, just photo URL update failed
-          }
+        try {
+          photoUrl = await uploadAvatar(userId, profileImage);
+        } catch (uploadErr) {
+          console.error('Avatar upload error:', uploadErr);
+          // Don't block signup if avatar upload fails
         }
+      }
+
+      // Step 3: Save profile row with all fields including email (NOT NULL)
+      // FIX: upsert needs `id` inside the object — .eq() doesn't work with upsert
+      // FIX: include email, first_name, last_name so the profile is complete on signup
+      const profilePayload = {
+        id: userId,
+        email: formData.email,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        ...(photoUrl && { photo_url: photoUrl }),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(profilePayload, { onConflict: 'id' });
+
+      if (upsertError) {
+        console.error('Profile upsert error:', upsertError);
+        // Don't block signup — user can update profile later
       }
 
       alert('Account created! Check your email to confirm.');
@@ -162,13 +184,11 @@ function Signup() {
     } catch (err) {
       console.error('Signup error:', err);
 
-      // Handle rate limit
       if (err.message && err.message.includes('rate limit')) {
         setErrors({ general: 'Too many signup attempts. Please wait a minute and try again.' });
       } else {
         setErrors({ general: err.message || 'Signup failed. Please try again.' });
       }
-
     } finally {
       setLoading(false);
     }

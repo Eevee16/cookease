@@ -14,6 +14,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [banPopup, setBanPopup] = useState(null)
   const [unverifiedEmail, setUnverifiedEmail] = useState(null)
+  const [resendLoading, setResendLoading] = useState(false)
 
   const [showForgotModal, setShowForgotModal] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
@@ -66,8 +67,10 @@ function Login() {
       )
 
       if (!confirmed) {
+        // Store email BEFORE signing out
+        const emailToVerify = formData.email
         await supabase.auth.signOut()
-        setUnverifiedEmail(formData.email)
+        setUnverifiedEmail(emailToVerify)
         setLoading(false)
         return
       }
@@ -185,18 +188,32 @@ function Login() {
   const handleResendVerification = async () => {
     if (!unverifiedEmail) return
     
+    setResendLoading(true)
     try {
-      const { error } = await supabase.auth.resend({
+      const { data, error } = await supabase.auth.resend({
         type: 'signup',
         email: unverifiedEmail,
+        options: {
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/login`
+        }
       })
 
-      if (error) throw error
+      if (error) {
+        console.error('Resend error details:', error)
+        throw error
+      }
 
-      alert('Verification email sent! Please check your inbox.')
+      console.log('Resend success:', data)
+      alert('✅ Verification email sent! Please check your inbox and spam folder.')
+      // Close the popup after successful send
+      setUnverifiedEmail(null)
     } catch (err) {
-      console.error(err)
-      alert('Failed to send verification email. Please try again.')
+      console.error('Failed to resend verification:', err)
+      // Show more detailed error message
+      const errorMessage = err.message || 'Unknown error occurred'
+      alert(`❌ Failed to send verification email:\n\n${errorMessage}\n\nPlease try again or contact support if the issue persists.`)
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -275,13 +292,15 @@ function Login() {
                 className="ban-close-btn" 
                 style={{ background: '#10b981', flex: 1 }}
                 onClick={handleResendVerification}
+                disabled={resendLoading}
               >
-                Resend Verification Email
+                {resendLoading ? 'Sending...' : 'Resend Verification Email'}
               </button>
               <button 
                 className="ban-close-btn" 
                 style={{ background: '#6b7280', flex: 1 }}
                 onClick={() => setUnverifiedEmail(null)}
+                disabled={resendLoading}
               >
                 Close
               </button>

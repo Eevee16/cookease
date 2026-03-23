@@ -34,7 +34,6 @@ function Profile() {
       try {
         console.log("🔍 Checking authentication...");
         
-        // First, try to get the session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         console.log("📦 Session data:", session ? "Session found" : "No session");
@@ -42,14 +41,12 @@ function Profile() {
 
         if (!isMounted) return;
 
-        // If there's a session, we're good to go
         if (session && session.user) {
           console.log("✅ User authenticated:", session.user.email);
           setUserData(session.user);
           await fetchUserData();
           setAuthChecked(true);
         } else {
-          // No session - but let's double check with getUser
           console.log("🔄 No session, trying getUser...");
           const { data: { user }, error: userError } = await supabase.auth.getUser();
           
@@ -57,6 +54,18 @@ function Profile() {
           console.log("❌ User error:", userError);
 
           if (!isMounted) return;
+
+          // FIX: Handle stale JWT — user deleted from auth but token still exists
+          if (userError?.message?.includes("does not exist")) {
+            console.warn("🧹 Stale JWT detected, signing out...");
+            await supabase.auth.signOut();
+            if (isMounted) {
+              setAuthChecked(true);
+              setLoading(false);
+              navigate("/login");
+            }
+            return;
+          }
 
           if (user) {
             console.log("✅ User found via getUser:", user.email);
@@ -82,7 +91,6 @@ function Profile() {
 
     checkAuthAndLoadData();
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("🔔 Auth state changed:", event);
       
@@ -109,9 +117,16 @@ function Profile() {
   const fetchUserData = async () => {
     setLoading(true);
     try {
-      // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
+      // FIX: Handle stale JWT in fetchUserData as well
+      if (userError?.message?.includes("does not exist")) {
+        console.warn("🧹 Stale JWT in fetchUserData, signing out...");
+        await supabase.auth.signOut();
+        navigate("/login");
+        return;
+      }
+
       if (userError || !user) {
         console.error("Not logged in:", userError);
         setLoading(false);
@@ -120,8 +135,6 @@ function Profile() {
 
       setUserData(user);
 
-      // Get profile data. use maybeSingle so that absence of a row
-      // doesn't throw an error – we simply end up with `null`.
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("*")
@@ -131,11 +144,9 @@ function Profile() {
       if (profileError) {
         console.error("Error fetching profile:", profileError);
       } else {
-        // `profile` will be `null` if the user hasn't created one yet.
         setProfileData(profile);
       }
 
-      // Get user's recipes
       const { data: recipes, error: recipesError } = await supabase
         .from("recipes")
         .select("*")
@@ -147,7 +158,6 @@ function Profile() {
       } else {
         setUserRecipes(recipes || []);
         
-        // Calculate stats
         const total = recipes?.length || 0;
         const approved = recipes?.filter(r => r.status === "approved").length || 0;
         const pending = recipes?.filter(r => r.status === "pending").length || 0;
@@ -170,7 +180,6 @@ function Profile() {
   };
 
   const openEditModal = () => {
-    // Pre-fill form with existing profile data or empty strings
     setEditForm({
       first_name: profileData?.first_name || "",
       last_name: profileData?.last_name || "",
@@ -200,6 +209,8 @@ function Profile() {
 
       const profilePayload = {
         id: userData.id,
+        // FIX: include email to satisfy the NOT NULL constraint on profiles.email
+        email: userData.email,
         first_name: editForm.first_name.trim(),
         last_name: editForm.last_name.trim(),
         name: editForm.name.trim(),
@@ -207,9 +218,7 @@ function Profile() {
         updated_at: new Date().toISOString()
       };
 
-      // Check if profile exists
       if (profileData) {
-        // Update existing profile
         const { error } = await supabase
           .from("profiles")
           .update(profilePayload)
@@ -217,7 +226,6 @@ function Profile() {
 
         if (error) throw error;
       } else {
-        // Create new profile
         const { error } = await supabase
           .from("profiles")
           .insert([profilePayload]);
@@ -225,7 +233,6 @@ function Profile() {
         if (error) throw error;
       }
 
-      // Refresh profile data
       await fetchUserData();
       setShowEditModal(false);
       alert("Profile updated successfully!");
@@ -241,13 +248,11 @@ function Profile() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('Image size should be less than 5MB');
       return;
@@ -261,12 +266,10 @@ function Profile() {
         return;
       }
 
-      // Create unique file name
       const fileExt = file.name.split('.').pop();
       const fileName = `${userData.id}-${Date.now()}.${fileExt}`;
       const filePath = `profile-pictures/${fileName}`;
 
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
         .upload(filePath, file, {
@@ -276,20 +279,19 @@ function Profile() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
         .getPublicUrl(filePath);
 
-      // Update profile with new photo URL
+      // FIX: include email here too so insert doesn't violate NOT NULL
       const profilePayload = {
         id: userData.id,
+        email: userData.email,
         photo_url: publicUrl,
         updated_at: new Date().toISOString()
       };
 
       if (profileData) {
-        // Update existing profile
         const { error } = await supabase
           .from("profiles")
           .update(profilePayload)
@@ -297,7 +299,6 @@ function Profile() {
 
         if (error) throw error;
       } else {
-        // Create new profile with photo
         const { error } = await supabase
           .from("profiles")
           .insert([profilePayload]);
@@ -305,7 +306,6 @@ function Profile() {
         if (error) throw error;
       }
 
-      // Refresh profile data
       await fetchUserData();
       alert("Profile picture updated successfully!");
     } catch (error) {

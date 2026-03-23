@@ -27,7 +27,9 @@ function RecipeDetail() {
   const [downvotes, setDownvotes] = useState(0);
   const [userVote, setUserVote] = useState(null);
   const [voteLoading, setVoteLoading] = useState(false);
-  const [ownerPhoto, setOwnerPhoto] = useState(null);
+
+  // FIX: store the full resolved owner info instead of just photo
+  const [ownerInfo, setOwnerInfo] = useState({ name: null, photo: null });
 
   useEffect(() => {
     if (localMatch) return;
@@ -43,26 +45,34 @@ function RecipeDetail() {
     fetchRecipe();
   }, [id, localMatch]);
 
-  // Fetch owner profile photo
+  // FIX: fetch name fields too so we never fall back to email
   useEffect(() => {
-    if (!recipe || !recipe.owner_id) return;
-    
+    if (!recipe?.owner_id) return;
+
     const fetchOwnerProfile = async () => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("photo_url")
+          .select("first_name, last_name, name, photo_url")
           .eq("id", recipe.owner_id)
-          .single();
-        
-        if (!error && data) {
-          setOwnerPhoto(data.photo_url);
-        }
+          .maybeSingle(); // FIX: maybeSingle so missing profile doesn't throw 406
+
+        if (error || !data) return;
+
+        // Priority: display name → first+last → first only → "Chef"
+        // Never use email as a fallback
+        const firstLast = [data.first_name, data.last_name].filter(Boolean).join(" ").trim();
+        const resolvedName = data.name?.trim() || firstLast || "Chef";
+
+        setOwnerInfo({
+          name: resolvedName,
+          photo: data.photo_url || null,
+        });
       } catch (err) {
         console.error("Error fetching owner profile:", err);
       }
     };
-    
+
     fetchOwnerProfile();
   }, [recipe]);
 
@@ -210,7 +220,6 @@ function RecipeDetail() {
     return [];
   };
 
-  // Full ingredient parser with quantity, unit, prep
   const parseIngredient = (str) => {
     if (!str) return { raw: str, name: str, qty: "", unit: "", prep: "" };
 
@@ -280,6 +289,13 @@ function RecipeDetail() {
   const canEdit = isOwner && (recipe.status === "pending" || recipe.status === null || recipe.status === undefined);
   const netVotes = upvotes - downvotes;
 
+  // Use live profile data with fallback to recipe row data, then "Chef"
+  // Never expose email
+  const displayName = ownerInfo.name
+    || (recipe.owner_name && !recipe.owner_name.includes("@") ? recipe.owner_name : null)
+    || "Chef";
+  const displayPhoto = ownerInfo.photo || null;
+
   return (
     <div className="recipe-detail-page">
       <header className="detail-header">
@@ -288,17 +304,17 @@ function RecipeDetail() {
         <div className="header-actions">
           <button className="icon-btn" title="Share" onClick={handleShare}><span>↗️</span></button>
           <button className="icon-btn" title="Print" onClick={() => window.print()}><span>🖨️</span></button>
-            {isOwner && (
-              canEdit ? (
-                <Link to={`/edit-recipe/${recipe.id}`} className="icon-btn" title="Edit Recipe">
-                  <span>✏️</span>
-                </Link>
-              ) : (
-                <button className="icon-btn icon-btn-disabled" title="Cannot edit — recipe is already approved" disabled>
-                  <span>🔒</span>
-                </button>
-              )
-)}
+          {isOwner && (
+            canEdit ? (
+              <Link to={`/edit-recipe/${recipe.id}`} className="icon-btn" title="Edit Recipe">
+                <span>✏️</span>
+              </Link>
+            ) : (
+              <button className="icon-btn icon-btn-disabled" title="Cannot edit — recipe is already approved" disabled>
+                <span>🔒</span>
+              </button>
+            )
+          )}
         </div>
       </header>
 
@@ -343,11 +359,13 @@ function RecipeDetail() {
           <div className="hero-content">
             <div className="recipe-category">{recipe.cuisine || "World"} • {recipe.category || "Main Course"}</div>
             <h1 className="detail-title">{recipe.title}</h1>
+
+            {/* FIX: use ownerInfo for both photo and name */}
             <div className="author-info">
-              {ownerPhoto ? (
-                <img 
-                  src={ownerPhoto} 
-                  alt={recipe.owner_name || "User"} 
+              {displayPhoto ? (
+                <img
+                  src={displayPhoto}
+                  alt={displayName}
                   className="author-avatar-image"
                   onError={(e) => {
                     e.target.style.display = 'none';
@@ -355,17 +373,18 @@ function RecipeDetail() {
                   }}
                 />
               ) : null}
-              <div 
-                className="author-avatar" 
-                style={{ display: ownerPhoto ? 'none' : 'flex' }}
+              <div
+                className="author-avatar"
+                style={{ display: displayPhoto ? 'none' : 'flex' }}
               >
-                {recipe.owner_name ? recipe.owner_name[0].toUpperCase() : "U"}
+                {displayName[0]?.toUpperCase()}
               </div>
               <div className="author-details">
                 <p className="author-label">Recipe by</p>
-                <p className="author-name">{recipe.owner_name || "Anonymous"}</p>
+                <p className="author-name">{displayName}</p>
               </div>
             </div>
+
             <p className="recipe-description">
               {recipe.description || "A delicious recipe that you'll love to make and share with family and friends."}
             </p>
@@ -376,7 +395,6 @@ function RecipeDetail() {
               <div className="info-card"><span className="info-icon">🔥</span><div className="info-content"><span className="info-label">Difficulty</span><span className="info-value">{recipe.difficulty || "Medium"}</span></div></div>
             </div>
 
-            {/* Save + PDF — original style */}
             <div className="recipe-btn-row">
               <button className={`save-btn ${isSaved ? "saved" : ""}`} onClick={handleSaveRecipe} disabled={saveLoading}>
                 {saveLoading ? "⏳ Saving..." : isSaved ? "✓ Saved" : "🔖 Save Recipe"}
