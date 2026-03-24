@@ -28,7 +28,7 @@ import BanChecker from './components/BanChecker';
 import EditRecipe from "./pages/EditRecipe.jsx";
 
 
-
+//hehe
 function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data, error }) => {
