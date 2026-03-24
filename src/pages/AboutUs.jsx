@@ -3,9 +3,9 @@ import "../styles/AboutUs.css";
 
 function AboutUs() {
   const team = [
-    { name: "Lemon Juice", role: "Lead Developer", avatar: "L", bio: "Passionate about food and code. Built CookEase to bring recipes to everyone." },
-    { name: "Gwy Ocampo", role: "UI/UX Designer", avatar: "G", bio: "Designs experiences that feel as good as a home-cooked meal." },
-    { name: "CookEase Team", role: "Community Managers", avatar: "C", bio: "Keeping the community warm, helpful, and delicious." },
+    { name: "Ram David Raphael O. Leocadio", role: "Lead Developer", avatar: "R", bio: "Passionate about food and gaming. Built CookEase to bring recipes to everyone." },
+    { name: "Neil Andrei Q. Sarmiento", role: "UI/UX Designer", avatar: "N", bio: "Designs experiences that feel as good as a home-cooked meal." },
+    { name: "Gwyneth Angel C. Ocampo", role: "Project Manager", avatar: "G", bio: "Keeping the community warm, helpful, and delicious." },
   ];
 
   const stats = [
