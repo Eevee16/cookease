@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { useRoles } from "../contexts/RoleContext";
 import { supabase } from "../supabaseClient";
@@ -8,6 +8,7 @@ import "../styles/notification.css";
 function Layout({ children }) {
   const { user, logout, isAdmin, isModerator } = useRoles();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showRecipesDropdown, setShowRecipesDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -18,6 +19,9 @@ function Layout({ children }) {
 
   // ✅ Ban popup state
   const [banPopup, setBanPopup] = useState(null); // null | { type: "tempbanned"|"banned", until?: string, reason?: string }
+
+  // Helper function to check if a path is active
+  const isActive = (path) => location.pathname === path;
 
   useEffect(() => {
     if (!user) return;
@@ -181,7 +185,7 @@ function Layout({ children }) {
 
       <header className="header">
         <div className="header-content">
-          <button className="menu-btn">☰</button>
+          
           <h1 className="logo" onClick={() => navigate(user ? "/home" : "/")} style={{ cursor: "pointer" }}>CookEase</h1>
 
           <form className="search-bar" onSubmit={handleSearch}>
@@ -196,27 +200,55 @@ function Layout({ children }) {
           </form>
 
           <nav className="nav">
-            <Link to="/home" className="nav-link">Home</Link>
-            <Link to="/popular" className="nav-link">Popular</Link>
+            <Link to="/home" className={`nav-link ${isActive('/home') ? 'active' : ''}`}>Home</Link>
+            <Link to="/popular" className={`nav-link ${isActive('/popular') ? 'active' : ''}`}>Popular</Link>
 
             <div
               className="dropdown"
               onMouseEnter={() => setShowRecipesDropdown(true)}
               onMouseLeave={() => setShowRecipesDropdown(false)}
             >
-              <button className="dropdown-btn">Discover ▼</button>
+              <button 
+                className={`dropdown-btn ${(isActive('/search-course-cuisine') || isActive('/search-ingredients')) ? 'active' : ''}`}
+                onClick={() => setShowRecipesDropdown(prev => !prev)}
+              >
+                Discover ▼
+              </button>
               <div className={`dropdown-content ${showRecipesDropdown ? "show" : ""}`}>
-                <Link to="/search-course-cuisine">By Course</Link>
-                <Link to="/search-ingredients">By Ingredients</Link>
+                <Link 
+                  to="/search-course-cuisine" 
+                  className={isActive('/search-course-cuisine') ? 'active' : ''}
+                  onClick={() => setShowRecipesDropdown(false)}
+                >
+                  By Course
+                </Link>
+                <Link 
+                  to="/search-ingredients" 
+                  className={isActive('/search-ingredients') ? 'active' : ''}
+                  onClick={() => setShowRecipesDropdown(false)}
+                >
+                  By Ingredients
+                </Link>
               </div>
             </div>
 
             {/* ✅ Add Recipe now uses onClick handler instead of plain Link */}
-            <a href="/add-recipe" className="add-recipe-link" onClick={handleAddRecipeClick}>
+            <a 
+              href="/add-recipe" 
+              className={`add-recipe-link ${isActive('/add-recipe') ? 'active' : ''}`}
+              onClick={handleAddRecipeClick}
+            >
               + Add Recipe
             </a>
 
-            {isModerator && <Link to="/moderator" className="moderator-link">📋 Moderator</Link>}
+            {isModerator && (
+              <Link 
+                to="/moderator" 
+                className={`moderator-link ${isActive('/moderator') ? 'active' : ''}`}
+              >
+                📋 Moderator
+              </Link>
+            )}
 
             {/* Notification Bell */}
             {user && (
@@ -281,19 +313,67 @@ function Layout({ children }) {
 
                 {showUserMenu && (
                   <div className="user-dropdown">
-                    <Link to="/profile" onClick={() => setShowUserMenu(false)}>My Profile</Link>
-                    <Link to="/my-recipes" onClick={() => setShowUserMenu(false)}>My Recipes</Link>
+                    <Link 
+                      to="/profile" 
+                      className={isActive('/profile') ? 'active' : ''}
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      My Profile
+                    </Link>
+                    <Link 
+                      to="/my-recipes" 
+                      className={isActive('/my-recipes') ? 'active' : ''}
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      My Recipes
+                    </Link>
                     <div className="user-dropdown-divider" />
-                    <Link to="/about" onClick={() => setShowUserMenu(false)}>About Us</Link>
-                    <Link to="/contact" onClick={() => setShowUserMenu(false)}>Contact Us</Link>
+                    <Link 
+                      to="/about" 
+                      className={isActive('/about') ? 'active' : ''}
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      About Us
+                    </Link>
+                    <Link 
+                      to="/contact" 
+                      className={isActive('/contact') ? 'active' : ''}
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      Contact Us
+                    </Link>
                     {isAdmin && (
                       <>
                         <div className="user-dropdown-divider" />
                         <span className="user-dropdown-section-label">Admin</span>
-                        <Link to="/admin" onClick={() => setShowUserMenu(false)}>⚙️ Dashboard</Link>
-                        <Link to="/admin-approval" onClick={() => setShowUserMenu(false)}>✅ User Approval</Link>
-                        <Link to="/admin-stats" onClick={() => setShowUserMenu(false)}>📊 Statistics</Link>
-                        <Link to="/admin-punishment" onClick={() => setShowUserMenu(false)}>🚫 User Moderation</Link>
+                        <Link 
+                          to="/admin" 
+                          className={isActive('/admin') ? 'active' : ''}
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          ⚙️ Dashboard
+                        </Link>
+                        <Link 
+                          to="/admin-approval" 
+                          className={isActive('/admin-approval') ? 'active' : ''}
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          ✅ User Approval
+                        </Link>
+                        <Link 
+                          to="/admin-stats" 
+                          className={isActive('/admin-stats') ? 'active' : ''}
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          📊 Statistics
+                        </Link>
+                        <Link 
+                          to="/admin-punishment" 
+                          className={isActive('/admin-punishment') ? 'active' : ''}
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          🚫 User Moderation
+                        </Link>
                       </>
                     )}
                     <div className="user-dropdown-divider" />
@@ -303,8 +383,18 @@ function Layout({ children }) {
               </div>
             ) : (
               <>
-                <Link to="/login" className="login-link">Login</Link>
-                <Link to="/signup" className="signup-link">Sign Up</Link>
+                <Link 
+                  to="/login" 
+                  className={`login-link ${isActive('/login') ? 'active' : ''}`}
+                >
+                  Login
+                </Link>
+                <Link 
+                  to="/signup" 
+                  className={`signup-link ${isActive('/signup') ? 'active' : ''}`}
+                >
+                  Sign Up
+                </Link>
               </>
             )}
           </nav>

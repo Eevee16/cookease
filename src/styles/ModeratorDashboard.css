@@ -120,13 +120,17 @@
 .moderator-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 28px;
+  margin-bottom: 0;
   border-bottom: 2px solid #e5e7eb;
   background: white;
   padding: 8px 8px 0 8px;
   border-radius: 12px 12px 0 0;
 }
 
+/* Connect the tabs visually to the table below */
+.moderator-section {
+  margin-top: -2px;
+}
 .tab-btn {
   background: transparent;
   border: none;
@@ -214,12 +218,23 @@
   vertical-align: middle;
 }
 
-.recipes-table tbody tr {
-  transition: background 0.2s ease;
+/* Ensure action buttons are vertically centered within the row */
+.recipes-table td:last-child {
+  vertical-align: middle;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 46px 34px;
 }
 
-.recipes-table tbody tr:hover {
-  background: #f9fafb;
+/* Add extra vertical spacing inside the action button group */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 22px 0;
 }
 
 .recipe-thumbnail {
@@ -263,6 +278,7 @@
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+  height: 100%;
 }
 
 .btn-view,
@@ -482,6 +498,200 @@
   margin-bottom: 16px;
   opacity: 0.5;
 }
+
+/* Responsive Design */
+@media (max-width: 767px) {
+  .moderator-header-content {
+    padding: 0 16px;
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .moderator-header h1 {
+    font-size: 24px;
+  }
+
+  .back-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .moderator-main {
+    padding: 20px 16px;
+  }
+
+  .stats-cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    padding: 20px;
+  }
+
+  .stat-number {
+    font-size: 32px;
+  }
+
+  .moderator-tabs {
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 4px 0 4px;
+  }
+
+  .tab-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+    justify-content: center;
+  }
+
+  .recipes-table-container {
+    overflow-x: auto;
+  }
+
+  .recipes-table th,
+  .recipes-table td {
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+
+  .recipes-table td:last-child {
+    padding: 12px 8px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 6px;
+    padding: 0;
+  }
+
+  .recipe-thumbnail {
+    width: 60px;
+    height: 60px;
+  }
+
+  .recipe-title-cell {
+    max-width: 200px;
+    font-size: 14px;
+  }
+
+  .category-badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .rejection-reason {
+    max-width: 180px;
+    font-size: 12px;
+  }
+
+  .btn-view,
+  .btn-approve,
+  .btn-reject,
+  .btn-delete {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .modal-content {
+    padding: 24px;
+    margin: 16px;
+    width: calc(100% - 32px);
+  }
+
+  .modal-content h3 {
+    font-size: 20px;
+  }
+
+  .modal-description {
+    font-size: 14px;
+  }
+
+  .rejection-textarea {
+    font-size: 13px;
+    padding: 12px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .btn-cancel,
+  .btn-confirm-reject {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  .empty-state {
+    padding: 60px 16px;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .moderator-header-content {
+    padding: 0 24px;
+  }
+
+  .moderator-header h1 {
+    font-size: 28px;
+  }
+
+  .moderator-main {
+    padding: 30px 24px;
+  }
+
+  .stats-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .stat-card {
+    padding: 24px;
+  }
+
+  .stat-number {
+    font-size: 36px;
+  }
+
+  .tab-btn {
+    padding: 12px 24px;
+  }
+
+  .recipes-table th,
+  .recipes-table td {
+    padding: 14px 16px;
+  }
+
+  .recipe-thumbnail {
+    width: 80px;
+    height: 80px;
+  }
+
+  .recipe-title-cell {
+    max-width: 250px;
+  }
+
+  .modal-content {
+    max-width: 480px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .stats-cards {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .recipe-title-cell {
+    max-width: 350px;
+  }
+}
+
 
 .empty-message {
   color: #6b7280;

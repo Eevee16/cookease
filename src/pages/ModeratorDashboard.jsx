@@ -40,9 +40,45 @@ function ModeratorDashboard() {
 
       if (error) throw error;
 
-      setPendingRecipes(allRecipes.filter(r => !r.status || r.status === "pending"));
-      setApprovedRecipes(allRecipes.filter(r => r.status === "approved"));
-      setRejectedRecipes(allRecipes.filter(r => r.status === "rejected"));
+      // Ensure every recipe has a consistent display name for the owner.
+      // Use stored owner_name when present, otherwise resolve it from the profile.
+      const ownerIds = [
+        ...new Set(allRecipes.map(r => r.owner_id).filter(Boolean))
+      ];
+
+      let ownerMap = {};
+      if (ownerIds.length) {
+        const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, name, email")
+        .in("id", ownerIds);
+
+      if (profileError) {
+        console.warn("Could not load owner profiles:", profileError);
+      } else {
+        ownerMap = (profiles || []).reduce((acc, p) => {
+          const firstLast = [p.first_name, p.last_name].filter(Boolean).join(" ");
+          const displayName = firstLast || p.name || p.email || "Unknown";
+          acc[p.id] = displayName;
+          return acc;
+        }, {});
+      }
+    }
+
+      const normalizeOwner = (recipe) => {
+        // Prefer the profile-derived display name (fn/ln or name) when available.
+        // Fallback to stored owner_name only if we can't resolve a profile name.
+        return ownerMap[recipe.owner_id] || recipe.owner_name?.trim() || "Unknown";
+      };
+
+      const normalized = allRecipes.map(r => ({
+        ...r,
+        owner_name: normalizeOwner(r),
+      }));
+
+      setPendingRecipes(normalized.filter(r => !r.status || r.status === "pending"));
+      setApprovedRecipes(normalized.filter(r => r.status === "approved"));
+      setRejectedRecipes(normalized.filter(r => r.status === "rejected"));
     } catch (err) {
       console.error("Error fetching recipes:", err);
       alert("Failed to load recipes. Please refresh the page.");

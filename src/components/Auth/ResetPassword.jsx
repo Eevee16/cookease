@@ -1,159 +1,250 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
-import "../../styles/ResetPassword.css";
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../supabaseClient'
+import '../../styles/Auth.css'
 
 function ResetPassword() {
-  const navigate = useNavigate();
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [isRecovery, setIsRecovery] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const navigate = useNavigate()
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    // Supabase automatically handles the hash fragment and creates a session
-    // We just need to wait for it to process
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        setIsRecovery(true);
-      } else {
-        setMessage("Invalid or expired reset link. Please request a new one.");
-      }
-    };
+    let mounted = true
+    let retryCount = 0
+    const maxRetries = 10
 
-    // Give Supabase a moment to process the hash fragment
-    setTimeout(checkSession, 100);
-  }, []);
+    const checkRecoverySession = async () => {
+      try {
+        // Check if we have recovery tokens in the URL
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        const type = hashParams.get('type')
+        const accessToken = hashParams.get('access_token')
+
+        if (type !== 'recovery' || !accessToken) {
+          if (mounted) {
+            setError('Invalid reset link. Please request a new password reset.')
+            setIsReady(false)
+          }
+          return
+        }
+
+        // We have valid tokens - try to get session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (session && mounted) {
+          // Session established successfully
+          console.log('Recovery session ready')
+          setIsReady(true)
+          setError('')
+          return
+        }
+
+        // No session yet - retry
+        if (retryCount < maxRetries && mounted) {
+          retryCount++
+          console.log(`Retry ${retryCount}/${maxRetries} - waiting for session...`)
+          setTimeout(checkRecoverySession, 500) // Retry every 500ms
+        } else if (mounted) {
+          // Max retries reached
+          setError('Failed to process reset link. Please request a new password reset.')
+          setIsReady(false)
+        }
+      } catch (err) {
+        console.error('Session check error:', err)
+        if (mounted && retryCount < maxRetries) {
+          retryCount++
+          setTimeout(checkRecoverySession, 500)
+        } else if (mounted) {
+          setError('Failed to process reset link. Please try again.')
+          setIsReady(false)
+        }
+      }
+    }
+
+    // Start checking immediately
+    checkRecoverySession()
+
+    // Also listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event)
+      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session && mounted) {
+        setIsReady(true)
+        setError('')
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
+    setError('')
+    setLoading(true)
 
-    if (!newPassword || newPassword !== confirmPassword) {
-      setMessage("Passwords do not match!");
-      return;
-    }
-
+    // Validation
     if (newPassword.length < 6) {
-      setMessage("Password must be at least 6 characters long.");
-      return;
+      setError('Password must be at least 6 characters')
+      setLoading(false)
+      return
     }
 
-    setLoading(true);
+    if (!/(?=.*[a-z])/.test(newPassword) ||
+        !/(?=.*[A-Z])/.test(newPassword) ||
+        !/(?=.*\d)/.test(newPassword) ||
+        !/(?=.*[@$!%*?&])/.test(newPassword)) {
+      setError('Password must include uppercase, lowercase, number, and special character')
+      setLoading(false)
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
+      return
+    }
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      })
 
-      if (error) throw error;
+      if (updateError) throw updateError
 
-      setMessage("Password successfully updated! Redirecting to login...");
-      
-      // Sign out the user after password reset
-      await supabase.auth.signOut();
-      
-      setTimeout(() => navigate("/login"), 2500);
+      setSuccess(true)
+
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        navigate('/login')
+      }, 2000)
+
     } catch (err) {
-      console.error("Reset password error:", err);
-      setMessage(err.message || "Something went wrong. Try again.");
+      console.error('Password reset error:', err)
+      setError(err.message || 'Failed to reset password. Please try again.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-
-  if (!isRecovery && !message) {
-    return (
-      <div className="reset-password-page">
-        <h2>Reset Password</h2>
-        <p>Loading...</p>
-      </div>
-    );
   }
 
-  if (!isRecovery) {
+  if (success) {
     return (
-      <div className="reset-password-page">
-        <h2>Reset Password</h2>
-        <p className="error">{message}</p>
-        <button onClick={() => navigate("/forgot-password")}>Request New Reset Link</button>
+      <div className="auth-page">
+        <div className="auth-container">
+          <div className="auth-header">
+            <h1 className="auth-logo" onClick={() => navigate('/')}>CookEase</h1>
+            <p className="auth-subtitle">Password Reset Successful</p>
+          </div>
+          <div className="success-message">
+            <div className="success-icon">✅</div>
+            <h3>Your password has been reset!</h3>
+            <p>Redirecting to login page...</p>
+          </div>
+        </div>
       </div>
-    );
+    )
   }
+
+  // Check if we have recovery tokens but session not ready
+  const hashParams = new URLSearchParams(window.location.hash.substring(1))
+  const hasTokens = hashParams.get('type') === 'recovery' && hashParams.get('access_token')
 
   return (
-    <div className="reset-password-page">
-      <h2>Reset Your Password</h2>
-      {message && <p className={message.includes("success") ? "success" : "error"}>{message}</p>}
-      <form onSubmit={handleSubmit}>
-        <div className="password-input-wrapper">
-          <input
-            type={showNewPassword ? "text" : "password"}
-            placeholder="New password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            minLength={6}
-          />
-          <button
-            type="button"
-            className="toggle-password"
-            onClick={() => setShowNewPassword(!showNewPassword)}
-            aria-label="Toggle password visibility"
-          >
-            {showNewPassword ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            )}
-          </button>
+    <div className="auth-page">
+      <div className="auth-container">
+        <div className="auth-header">
+          <h1 className="auth-logo" onClick={() => navigate('/')}>CookEase</h1>
+          <p className="auth-subtitle">Reset Your Password</p>
         </div>
-        
-        <div className="password-input-wrapper">
-          <input
-            type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            minLength={6}
-          />
-          <button
-            type="button"
-            className="toggle-password"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            aria-label="Toggle password visibility"
-          >
-            {showConfirmPassword ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            )}
-          </button>
+
+        {!isReady && hasTokens && !error ? (
+          // Has tokens but session not ready - show loading
+          <div className="auth-form">
+            <div className="auth-info" style={{ textAlign: 'center', color: '#667EAA', padding: '20px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
+              <p>Processing your reset link...</p>
+              <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '8px' }}>This may take a few seconds</p>
+            </div>
+          </div>
+        ) : !isReady ? (
+          // No valid session and no tokens, or error occurred
+          <div className="auth-form">
+            {error && <div className="auth-error">{error}</div>}
+            <button 
+              onClick={() => navigate('/login')}
+              className="auth-btn"
+              style={{ marginTop: '16px' }}
+            >
+              Back to Login
+            </button>
+          </div>
+        ) : (
+          // Session ready - show form
+          <form className="auth-form" onSubmit={handleSubmit}>
+            {error && <div className="auth-error">{error}</div>}
+
+            <div className="form-group">
+              <label htmlFor="new-password">New Password</label>
+              <input
+                type="password"
+                id="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="At least 6 chars, 1 uppercase, 1 lowercase, 1 number, 1 special"
+                required
+                minLength={6}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirm-password">Confirm Password</label>
+              <input
+                type="password"
+                id="confirm-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                required
+                minLength={6}
+                disabled={loading}
+              />
+            </div>
+
+            <button type="submit" className="auth-btn" disabled={loading}>
+              {loading ? 'Resetting Password...' : 'Reset Password'}
+            </button>
+          </form>
+        )}
+
+        <div className="auth-footer">
+          <p>
+            Remember your password?{' '}
+            <button 
+              type="button"
+              onClick={() => navigate('/login')}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: '#667EAA', 
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                padding: 0,
+                font: 'inherit'
+              }}
+            >
+              Back to Login
+            </button>
+          </p>
         </div>
-        
-        <button type="submit" disabled={loading}>
-          {loading ? "Updating..." : "Reset Password"}
-        </button>
-      </form>
+      </div>
     </div>
-  );
+  )
 }
 
-export default ResetPassword;
+export default ResetPassword

@@ -23,16 +23,21 @@ function BanChecker() {
 
     const checkBanStatus = async () => {
       try {
+        // FIX: use maybeSingle() instead of single() so that a missing profile
+        // row returns null instead of a 406 error.
         const { data, error } = await supabase
           .from("profiles")
           .select("status, ban_until, ban_reason")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error("Ban check error:", error);
           return;
         }
+
+        // FIX: guard against null — user has no profile row yet, nothing to check
+        if (!data) return;
 
         // ✅ PERMANENT BAN - Logout immediately
         if (data.status === "banned") {
@@ -41,7 +46,6 @@ function BanChecker() {
             reason: data.ban_reason || "Policy violation",
           });
           
-          // Log out after showing message
           setTimeout(async () => {
             await supabase.auth.signOut();
             navigate("/");
@@ -55,7 +59,6 @@ function BanChecker() {
           const banUntil = new Date(data.ban_until);
           const now = new Date();
 
-          // Check if ban has expired
           if (now >= banUntil) {
             // Auto-unban
             await supabase

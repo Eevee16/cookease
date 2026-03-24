@@ -215,9 +215,225 @@
 }
 .contact-reset:hover { background: #5568a0; }
 
-@media (max-width: 768px) {
-  .contact-main { grid-template-columns: 1fr; padding: 40px 20px; }
-  .contact-row { grid-template-columns: 1fr; }
-  .contact-hero h1 { font-size: 32px; }
-  .contact-form-wrapper { padding: 24px; }
+/* Responsive Design */
+@media (max-width: 767px) {
+  .contact-hero {
+    padding: 60px 16px;
+  }
+
+  .contact-tag {
+    padding: 5px 14px;
+    font-size: 11px;
+    margin-bottom: 16px;
+  }
+
+  .contact-hero h1 {
+    font-size: 32px;
+    margin-bottom: 14px;
+  }
+
+  .contact-hero p {
+    font-size: 16px;
+    max-width: 480px;
+  }
+
+  .contact-main {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 40px 16px 60px;
+  }
+
+  .contact-info h2 {
+    font-size: 22px;
+  }
+
+  .contact-info > p {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .contact-cards {
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .contact-card {
+    padding: 16px 18px;
+    gap: 14px;
+  }
+
+  .contact-icon {
+    font-size: 22px;
+  }
+
+  .contact-label {
+    font-size: 10px;
+  }
+
+  .contact-value {
+    font-size: 13px;
+  }
+
+  .contact-note {
+    padding: 16px 18px;
+  }
+
+  .contact-note h3 {
+    font-size: 13px;
+  }
+
+  .contact-note p {
+    font-size: 12px;
+  }
+
+  .contact-form-wrapper {
+    padding: 24px;
+    border-radius: 16px;
+  }
+
+  .contact-form h2 {
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+
+  .contact-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .contact-field {
+    margin-bottom: 16px;
+  }
+
+  .contact-field label {
+    font-size: 12px;
+  }
+
+  .contact-field input,
+  .contact-field textarea {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .contact-submit {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .contact-success {
+    padding: 50px 16px;
+  }
+
+  .success-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 24px;
+  }
+
+  .contact-success h3 {
+    font-size: 20px;
+  }
+
+  .contact-success p {
+    font-size: 14px;
+  }
+
+  .contact-reset {
+    padding: 9px 20px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .contact-hero {
+    padding: 70px 24px;
+  }
+
+  .contact-hero h1 {
+    font-size: 40px;
+  }
+
+  .contact-hero p {
+    font-size: 17px;
+  }
+
+  .contact-main {
+    grid-template-columns: 1fr 1.3fr;
+    gap: 36px;
+    padding: 56px 24px 70px;
+  }
+
+  .contact-info h2 {
+    font-size: 24px;
+  }
+
+  .contact-form-wrapper {
+    padding: 32px;
+  }
+
+  .contact-form h2 {
+    font-size: 22px;
+  }
+
+  .contact-row {
+    gap: 15px;
+  }
+
+  .contact-field input,
+  .contact-field textarea {
+    padding: 11px 13px;
+  }
+
+  .contact-submit {
+    padding: 13px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .contact-hero {
+    padding: 80px 40px;
+  }
+
+  .contact-hero h1 {
+    font-size: 48px;
+  }
+
+  .contact-hero p {
+    font-size: 18px;
+  }
+
+  .contact-main {
+    grid-template-columns: 1fr 1.4fr;
+    gap: 40px;
+    padding: 64px 40px 80px;
+  }
+
+  .contact-info h2 {
+    font-size: 26px;
+  }
+
+  .contact-info > p {
+    font-size: 15px;
+  }
+
+  .contact-form-wrapper {
+    padding: 40px;
+  }
+
+  .contact-form h2 {
+    font-size: 24px;
+  }
+
+  .contact-row {
+    gap: 16px;
+  }
+
+  .contact-field input,
+  .contact-field textarea {
+    padding: 12px 14px;
+  }
+
+  .contact-submit {
+    padding: 14px;
+    font-size: 15px;
+  }
 }

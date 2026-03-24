@@ -19,6 +19,138 @@
 }
 
 /* ================================
+   Ban Popup Overlay Styles
+================================ */
+.ban-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+}
+
+.ban-popup {
+  background: white;
+  padding: 3rem;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.4s ease;
+}
+
+.ban-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: bounce 0.6s ease;
+}
+
+.ban-icon.permanent {
+  color: #ef4444;
+}
+
+.ban-icon.temporary {
+  color: #f59e0b;
+}
+
+.ban-popup h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #1f2937;
+}
+
+.ban-reason {
+  background: #f3f4f6;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.ban-reason strong {
+  color: #111827;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.ban-countdown {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin: 1.5rem 0;
+}
+
+.countdown-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.countdown-time {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #b45309;
+  font-family: 'Courier New', monospace;
+}
+
+.ban-message {
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 1rem 0;
+}
+
+.ban-until {
+  color: #4b5563;
+  font-size: 0.9rem;
+  margin: 1rem 0;
+}
+
+.ban-until strong {
+  color: #1f2937;
+}
+
+.ban-contact {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-top: 1.5rem;
+  font-style: italic;
+}
+
+.ban-close-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1.5rem;
+  transition: all 0.2s;
+}
+
+.ban-close-btn:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* ================================
    Header & Logo
 ================================ */
 .auth-header {
@@ -355,6 +487,17 @@
   font-size: 14px;
 }
 
+.auth-info {
+  background: #d1ecf1;
+  color: #0c5460;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #bee5eb;
+  font-size: 14px;
+  text-align: center;
+}
+
 .form-error {
   color: #dc3545;
   font-size: 13px;
@@ -362,42 +505,42 @@
 }
 
 .password-strength {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .strength-bar {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: #e5e7eb;
-  transition: all 0.3s;
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: #e5e7eb;
+    transition: all 0.3s;
 }
 
 .strength-bar.strength-1,
 .strength-bar.strength-2 {
-  background: #ef4444;
-  width: 33%;
+    background: #ef4444;
+    width: 33%;
 }
 
 .strength-bar.strength-3,
 .strength-bar.strength-4 {
-  background: #f59e0b;
-  width: 66%;
+    background: #f59e0b;
+    width: 66%;
 }
 
 .strength-bar.strength-5,
 .strength-bar.strength-6 {
-  background: #10b981;
-  width: 100%;
+    background: #10b981;
+    width: 100%;
 }
 
 .password-strength span {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 500;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
 }
 
 
@@ -412,6 +555,15 @@
 @keyframes slideUp {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 /* ================================
@@ -429,4 +581,23 @@
     .toggle-btn {
         width: 32px;
     }
+}
+
+/* Mobile responsive for ban popup */
+@media (max-width: 640px) {
+  .ban-popup {
+    padding: 2rem 1.5rem;
+  }
+
+  .ban-icon {
+    font-size: 3rem;
+  }
+
+  .ban-popup h2 {
+    font-size: 1.5rem;
+  }
+
+  .countdown-time {
+    font-size: 1.5rem;
+  }
 }

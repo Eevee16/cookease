@@ -7,7 +7,7 @@ function RecipeCard({ recipe }) {
   const {
     id, title, image_url, category, cuisine,
     difficulty, prep_time, cook_time, servings,
-    rating, view_count, owner_name
+    rating, view_count, owner_name, owner_photo
   } = recipe;
 
   const totalTime = (prep_time || 0) + (cook_time || 0);
@@ -18,6 +18,12 @@ function RecipeCard({ recipe }) {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  const formatCount = (num) => {
+    if (!num) return "0";
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+    return num.toString();
   };
 
   const getDifficultyColor = (level) => {
@@ -31,6 +37,7 @@ function RecipeCard({ recipe }) {
 
   return (
     <Link to={`/recipe/${id}`} className="recipe-card">
+      {/* Image Container */}
       <div className="recipe-card-image">
         {image_url ? (
           <img src={image_url} alt={title} loading="lazy" />
@@ -41,50 +48,86 @@ function RecipeCard({ recipe }) {
           </div>
         )}
 
+        {/* Badges on Image */}
         <div className="recipe-card-badges">
           {category && <span className="badge badge-category">{category}</span>}
           {difficulty && (
-            <span className="badge badge-difficulty" style={{ backgroundColor: getDifficultyColor(difficulty) }}>
+            <span 
+              className="badge badge-difficulty" 
+              style={{ backgroundColor: getDifficultyColor(difficulty) }}
+            >
               {difficulty}
             </span>
           )}
         </div>
 
+        {/* View Count Badge */}
         {view_count > 0 && (
           <div className="recipe-card-views">
-            <span>👁️ {view_count}</span>
+            👁️ {formatCount(view_count)}
           </div>
         )}
       </div>
 
+      {/* Card Content */}
       <div className="recipe-card-content">
+        {/* Title */}
         <h3 className="recipe-card-title">{title || "Untitled Recipe"}</h3>
 
-        {cuisine && (
-          <p className="recipe-card-cuisine"><span>🌍</span> {cuisine}</p>
-        )}
-
-        <div className="recipe-card-info">
-          {totalTime > 0 && formatTime(totalTime) && (
-            <div className="info-item">
-              <span className="info-icon">⏱️</span>
-              <span>{formatTime(totalTime)}</span>
-            </div>
+        {/* Cuisine + Difficulty + Category Badges */}
+        <div className="recipe-card-tags">
+          {category && (
+            <span className="recipe-tag tag-category">{category}</span>
           )}
-          {rating > 0 && (
-            <div className="info-item">
-              <span className="info-icon">⭐</span>
-              <span>{rating.toFixed(1)}</span>
-            </div>
+          {cuisine && (
+            <span className="recipe-tag tag-cuisine">{cuisine}</span>
+          )}
+          {difficulty && (
+            <span className={`recipe-tag tag-difficulty difficulty-${difficulty.toLowerCase()}`}>
+              {difficulty}
+            </span>
           )}
         </div>
 
+        {/* Author Section */}
         {owner_name && (
           <div className="recipe-card-author">
-            <div className="author-avatar">{owner_name[0]?.toUpperCase()}</div>
-            <span className="author-name">by {owner_name}</span>
+            {owner_photo ? (
+              <img
+                src={owner_photo}
+                alt={owner_name}
+                className="recipe-card-author-avatar-img"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div 
+              className="recipe-card-author-avatar"
+              style={{ display: owner_photo ? 'none' : 'flex' }}
+            >
+              {owner_name[0]?.toUpperCase()}
+            </div>
+            <div className="recipe-card-author-info">
+              <p className="recipe-card-author-label">Recipe by</p>
+              <p className="recipe-card-author-name">{owner_name}</p>
+            </div>
           </div>
         )}
+
+        {/* Stats Section */}
+        <div className="recipe-card-stats">
+          {totalTime > 0 && formatTime(totalTime) && (
+            <span>⏱️ {formatTime(totalTime)}</span>
+          )}
+          {servings && (
+            <span>🍽️ {servings} servings</span>
+          )}
+          {rating > 0 && (
+            <span>⭐ {rating.toFixed(1)}</span>
+          )}
+        </div>
       </div>
     </Link>
   );
@@ -103,7 +146,8 @@ RecipeCard.propTypes = {
     servings: PropTypes.number,
     rating: PropTypes.number,
     view_count: PropTypes.number,
-    owner_name: PropTypes.string
+    owner_name: PropTypes.string,
+    owner_photo: PropTypes.string
   }).isRequired
 };
 

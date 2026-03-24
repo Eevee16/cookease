@@ -190,6 +190,156 @@
 .panel-save-btn:hover:not(:disabled) { background: #15803d; }
 .panel-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ===== Delete Button on Ingredient Cards ===== */
+.ingredient-delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(220, 38, 38, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  opacity: 0;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.ingredient-card:hover .ingredient-delete-btn {
+  opacity: 1;
+}
+
+.ingredient-delete-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+/* ===== Delete Confirmation Modal ===== */
+.delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.delete-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.delete-modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.delete-modal h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 12px;
+}
+
+.delete-modal p {
+  font-size: 15px;
+  color: #6b7280;
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.delete-modal p strong {
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.delete-warning {
+  font-size: 13px !important;
+  color: #dc2626 !important;
+  font-weight: 600;
+  margin-bottom: 24px !important;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.delete-modal-cancel {
+  flex: 1;
+  padding: 12px;
+  background: #f3f4f6;
+  color: #6b7280;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-modal-cancel:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.delete-modal-confirm {
+  flex: 1;
+  padding: 12px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-modal-confirm:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.delete-modal-cancel:disabled,
+.delete-modal-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* ===== Search Box ===== */
 .search-box { flex-shrink: 0; }
 
@@ -257,6 +407,7 @@
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
 }
 
 .ingredient-card:hover {
@@ -415,4 +566,16 @@
   .page-title { font-size: 28px; }
   .ingredients-grid { grid-template-columns: repeat(3, 1fr); }
   .recipe-grid { grid-template-columns: 1fr; }
+  
+  .delete-modal {
+    padding: 24px;
+  }
+  
+  .delete-modal-icon {
+    font-size: 40px;
+  }
+  
+  .delete-modal h3 {
+    font-size: 18px;
+  }
 }

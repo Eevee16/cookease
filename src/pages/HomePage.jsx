@@ -21,8 +21,7 @@ function HomePage() {
       try {
         setLoading(true);
 
-        // Fetch approved and done recipes
-        const { data, error } = await supabase
+        const { data: recipesData, error } = await supabase
           .from("recipes")
           .select("*")
           .in("status", ["approved", "done"])
@@ -30,8 +29,48 @@ function HomePage() {
 
         if (error) throw error;
 
-        setRecipes(data || []);
-        setFilteredRecipes(data || []);
+        const recipeList = recipesData || [];
+
+        const ownerIds = [...new Set(recipeList.map(r => r.owner_id).filter(Boolean))];
+        let ownerMap = {};
+
+        if (ownerIds.length) {
+          // FIX: removed email from select — never use email as display name
+          const { data: profiles, error: profileError } = await supabase
+            .from("profiles")
+            .select("id, first_name, last_name, name, photo_url")
+            .in("id", ownerIds);
+
+          if (profileError) {
+            console.warn("Failed to load profile data for recipes:", profileError);
+          } else {
+            ownerMap = (profiles || []).reduce((acc, p) => {
+              // FIX: correct priority — display name → first+last → first → "Chef"
+              const firstLast = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+              const displayName = p.name?.trim() || firstLast || "Chef";
+
+              acc[p.id] = {
+                displayName,
+                photoUrl: p.photo_url || null,
+              };
+              return acc;
+            }, {});
+          }
+        }
+
+        const normalized = recipeList.map(r => {
+          const owner = ownerMap[r.owner_id];
+          // FIX: block any email accidentally stored in owner_name column
+          const storedName = r.owner_name && !r.owner_name.includes("@") ? r.owner_name : null;
+          return {
+            ...r,
+            owner_name: owner?.displayName ?? storedName ?? "Chef",
+            owner_photo: owner?.photoUrl ?? null,
+          };
+        });
+
+        setRecipes(normalized);
+        setFilteredRecipes(normalized);
       } catch (err) {
         console.error("Failed to load recipes:", err);
       } finally {
@@ -42,18 +81,15 @@ function HomePage() {
     fetchRecipes();
   }, []);
 
-  // Apply filters
   useEffect(() => {
     let filtered = [...recipes];
 
     if (filters.category !== "all") {
       filtered = filtered.filter(r => r.category === filters.category);
     }
-
     if (filters.cuisine !== "all") {
       filtered = filtered.filter(r => r.cuisine === filters.cuisine);
     }
-
     if (filters.difficulty !== "all") {
       filtered = filtered.filter(r => r.difficulty === filters.difficulty);
     }
@@ -77,18 +113,14 @@ function HomePage() {
 
   return (
     <div className="home-page">
-      {/* Hero Section */}
       <div className="hero-section">
         <div className="hero-content">
           <h1>Discover Amazing Recipes</h1>
           <p>Find and share your favorite dishes with the community</p>
-          
         </div>
       </div>
 
       <div className="recipe-container">
-
-        {/* Recipe Grid */}
         <div className="recipe-grid">
           {filteredRecipes.length === 0 ? (
             <div className="empty-state">
@@ -108,7 +140,7 @@ function HomePage() {
                   <div className="empty-icon">🔍</div>
                   <h3>No recipes found</h3>
                   <p>Try adjusting your filters</p>
-                  <button 
+                  <button
                     onClick={() => setFilters({ category: "all", cuisine: "all", difficulty: "all" })}
                     className="btn-secondary"
                   >
@@ -119,10 +151,7 @@ function HomePage() {
             </div>
           ) : (
             filteredRecipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-              />
+              <RecipeCard key={recipe.id} recipe={recipe} />
             ))
           )}
         </div>

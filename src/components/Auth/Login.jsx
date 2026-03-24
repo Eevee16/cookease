@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
-import { supabase } from '../../supabaseClient' // Fixed import path
+import { supabase } from '../../supabaseClient'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import '../../styles/Auth.css'
 
@@ -12,6 +12,9 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [banPopup, setBanPopup] = useState(null)
+  const [unverifiedEmail, setUnverifiedEmail] = useState(null)
+  const [resendLoading, setResendLoading] = useState(false)
 
   const [showForgotModal, setShowForgotModal] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
@@ -21,9 +24,24 @@ function Login() {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
+  const formatTimeRemaining = (now, until) => {
+    const diff = until - now
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const days = Math.floor(hours / 24)
+    
+    if (days > 0) {
+      const remainingHours = hours % 24
+      return `${days} day${days > 1 ? 's' : ''}${remainingHours > 0 ? ` and ${remainingHours} hour${remainingHours > 1 ? 's' : ''}` : ''}`
+    }
+    
+    return `${hours} hour${hours > 1 ? 's' : ''}`
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setBanPopup(null)
+    setUnverifiedEmail(null)
     setLoading(true)
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -34,15 +52,97 @@ function Login() {
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       })
 
-      if (error) throw error
+      if (authError) throw authError
 
+      // ✅ STRICT EMAIL VERIFICATION CHECK
+      const confirmed = !!(
+        data?.user?.email_confirmed_at ||
+        data?.user?.confirmed_at ||
+        data?.user?.email_confirmed
+      )
+
+      if (!confirmed) {
+        // Store email BEFORE signing out
+        const emailToVerify = formData.email
+        await supabase.auth.signOut()
+        setUnverifiedEmail(emailToVerify)
+        setLoading(false)
+        return
+      }
+
+      // ✅ CHECK BAN STATUS AFTER SUCCESSFUL AUTH
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, status, ban_until, ban_reason")
+        .eq("id", data.user.id)
+        .single()
+
+      if (profileError) {
+        console.error("Profile fetch error:", profileError)
+        // If we can't fetch profile, allow login but log the error
+        const from = location.state?.from?.pathname || '/'
+        navigate(from, { replace: true })
+        return
+      }
+
+      // ✅ PERMANENT BAN - Sign out and show popup
+      if (profile.status === "banned") {
+        await supabase.auth.signOut()
+        
+        setBanPopup({
+          type: "permanent",
+          reason: profile.ban_reason || "Policy violation"
+        })
+        setLoading(false)
+        return
+      }
+
+      // ✅ TEMPORARY BAN - Check if expired
+      if (profile.status === "tempbanned") {
+        const banUntil = new Date(profile.ban_until)
+        const now = new Date()
+
+        // If ban has expired, auto-unban them
+        if (banUntil <= now) {
+          await supabase
+            .from("profiles")
+            .update({
+              status: "active",
+              ban_until: null,
+              ban_reason: null
+            })
+            .eq("id", profile.id)
+
+          // Allow them to proceed
+          const from = location.state?.from?.pathname || '/'
+          navigate(from, { replace: true })
+          return
+        }
+
+        // Ban is still active - sign them out and show popup
+        await supabase.auth.signOut()
+
+        const timeRemaining = formatTimeRemaining(now, banUntil)
+        
+        setBanPopup({
+          type: "temporary",
+          reason: profile.ban_reason || "Temporary suspension",
+          until: banUntil,
+          remaining: timeRemaining
+        })
+        setLoading(false)
+        return
+      }
+
+      // ✅ USER IS NOT BANNED - Proceed with login
       const from = location.state?.from?.pathname || '/'
       navigate(from, { replace: true })
+
     } catch (err) {
       if (err.message === 'Invalid login credentials')
         setError('Incorrect email or password')
@@ -50,7 +150,6 @@ function Login() {
         setError('Please verify your email before logging in')
       else
         setError('Login failed. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
@@ -73,7 +172,7 @@ function Login() {
       const { error } = await supabase.auth.resetPasswordForEmail(
         forgotEmail,
         {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/reset-password`,
         }
       )
 
@@ -86,8 +185,130 @@ function Login() {
     }
   }
 
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return
+    
+    setResendLoading(true)
+    try {
+      const { data, error } = await supabase.auth.resend({
+        type: 'signup',
+        email: unverifiedEmail,
+        options: {
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/login`
+        }
+      })
+
+      if (error) {
+        console.error('Resend error details:', error)
+        throw error
+      }
+
+      console.log('Resend success:', data)
+      alert('✅ Verification email sent! Please check your inbox and spam folder.')
+      // Close the popup after successful send
+      setUnverifiedEmail(null)
+    } catch (err) {
+      console.error('Failed to resend verification:', err)
+      // Show more detailed error message
+      const errorMessage = err.message || 'Unknown error occurred'
+      alert(`❌ Failed to send verification email:\n\n${errorMessage}\n\nPlease try again or contact support if the issue persists.`)
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
   return (
     <div className="auth-page">
+      {/* ✅ BAN POPUP OVERLAY */}
+      {banPopup && (
+        <div className="ban-overlay" onClick={() => setBanPopup(null)}>
+          <div className="ban-popup" onClick={(e) => e.stopPropagation()}>
+            {banPopup.type === "permanent" ? (
+              <>
+                <div className="ban-icon permanent">🚫</div>
+                <h2>Account Permanently Banned</h2>
+                <p className="ban-reason">
+                  <strong>Reason:</strong> {banPopup.reason}
+                </p>
+                <p className="ban-message">
+                  Your account has been permanently suspended and you cannot access CookEase.
+                </p>
+                <p className="ban-contact">
+                  If you believe this is a mistake, please contact support at support@cookease.com
+                </p>
+                <button className="ban-close-btn" onClick={() => setBanPopup(null)}>
+                  Close
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="ban-icon temporary">⏱️</div>
+                <h2>Account Temporarily Suspended</h2>
+                <p className="ban-reason">
+                  <strong>Reason:</strong> {banPopup.reason}
+                </p>
+                <div className="ban-countdown">
+                  <span className="countdown-label">Time Remaining</span>
+                  <span className="countdown-time">{banPopup.remaining}</span>
+                </div>
+                <p className="ban-message">
+                  Your account is temporarily suspended. You cannot log in during this period.
+                </p>
+                <p className="ban-until">
+                  Your access will be restored on{" "}
+                  <strong>
+                    {banPopup.until.toLocaleString("en-PH", {
+                      dateStyle: "long",
+                      timeStyle: "short",
+                    })}
+                  </strong>
+                </p>
+                <button className="ban-close-btn" onClick={() => setBanPopup(null)}>
+                  I Understand
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ✅ EMAIL VERIFICATION POPUP */}
+      {unverifiedEmail && (
+        <div className="ban-overlay" onClick={() => setUnverifiedEmail(null)}>
+          <div className="ban-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="ban-icon" style={{ color: '#3b82f6' }}>📧</div>
+            <h2>Email Not Verified</h2>
+            <p className="ban-message">
+              You must verify your email address before logging in to CookEase.
+            </p>
+            <p className="ban-reason">
+              <strong>Email:</strong> {unverifiedEmail}
+            </p>
+            <p className="ban-contact">
+              Please check your inbox for the verification email. Don't forget to check your spam folder!
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
+              <button 
+                className="ban-close-btn" 
+                style={{ background: '#10b981', flex: 1 }}
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+              >
+                {resendLoading ? 'Sending...' : 'Resend Verification Email'}
+              </button>
+              <button 
+                className="ban-close-btn" 
+                style={{ background: '#6b7280', flex: 1 }}
+                onClick={() => setUnverifiedEmail(null)}
+                disabled={resendLoading}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="auth-container">
         <div className="auth-header">
           <h1 className="auth-logo" onClick={() => navigate('/')}>CookEase</h1>
